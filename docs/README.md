@@ -1,0 +1,1 @@
+# Ortak belgeler: anlaşma belgesi, test metinleri, rapor taslakları

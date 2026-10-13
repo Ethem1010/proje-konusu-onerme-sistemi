@@ -1,0 +1,1 @@
+# Veritabanı: tablolar ve bağlantı (Ethem)

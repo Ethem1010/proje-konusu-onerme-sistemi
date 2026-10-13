@@ -1,0 +1,1 @@
+# Öneri motoru: profil çıkarma, proje üretme, puanlama (Ethem)
