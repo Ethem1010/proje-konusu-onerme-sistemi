@@ -1,0 +1,16 @@
+# Gizli ayarlar, asla gönderme
+.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Arayüz
+node_modules/
+dist/
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
