@@ -1,0 +1,96 @@
+/* Renkler ve yazı tipleri. Temel demodaki gibi koyu lacivert zemin ve sarı vurgu;
+   tonlar morluktan arındırılıp daha sakin bir laciverte çekildi. Alan renkleri (--c1…--c8)
+   demodakiyle aynı. Yazı tipleri index.html'deki Google Fonts bağlantısıyla gelir. */
+:root {
+  color-scheme: dark;
+  --bg: #0d1322;
+  --surface: #151e33;
+  --surface-2: #1c2741;
+  --field: #0f172a;
+  --line: #26324e;
+  --line-2: #34426a;
+  --fg: #edf0f7;
+  --fg-2: #c5cde0;
+  --muted: #8e9ab7;
+  --ink: #0d1322;
+  --accent: #f5c451;
+  --accent-2: #ffd679;
+  --good: #5fd6a0;
+  --warn: #ff9f45;
+  --crit: #f2707f;
+  /* Alan renkleri: her ilgi alanının kendi rengi (demodan) */
+  --c1: #9b8cff;
+  --c2: #4cc9f0;
+  --c3: #5fd6a0;
+  --c4: #ff7ac0;
+  --c5: #ff6b7a;
+  --c6: #ff9f45;
+  --c7: #ffd65c;
+  --c8: #6ee7e0;
+  --display: 'Unbounded', 'Trebuchet MS', sans-serif;
+  --body: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--body); -webkit-font-smoothing: antialiased; }
+
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(24px, 4vw, 30px); }
+h2 { font-size: 17px; }
+h3 { font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+p { margin: 0; max-width: 65ch; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:hover { color: var(--accent-2); }
+
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+
+button, select, textarea, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* Yerleşim: üstte tam genişlik çubuk, altında ortalanmış tek sütun */
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 20px 64px; }
+.scr { display: flex; flex-direction: column; gap: 20px; padding-top: 36px; }
+.sayfa-baslik { display: flex; flex-direction: column; gap: 8px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* Form alanları: hepsi aynı yükseklik, aynı zemin */
+input[type=text], input[type=email], input[type=password], select, textarea {
+  width: 100%;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--fg);
+  font-weight: 400;
+  transition: border-color .15s, box-shadow .15s;
+}
+input[type=text], input[type=email], input[type=password], select { height: 46px; padding: 0 14px; }
+select {
+  appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238e9ab7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+select option, select optgroup { background: var(--surface); color: var(--fg); }
+textarea { min-height: 150px; padding: 12px 14px; line-height: 1.6; resize: vertical; }
+input::placeholder, textarea::placeholder { color: #66728f; }
+input:hover, select:hover, textarea:hover { border-color: var(--line-2); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(245, 196, 81, .16); }
+select:disabled { opacity: .55; cursor: default; }
+
+label.f { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; color: var(--fg-2); min-width: 0; }
+.err { color: var(--crit); font-size: 14px; }
+.ok { color: var(--good); font-size: 14px; }
+
+/* "Seni tanıyalım": bölüm üstte tam satır, "Diğer" seçilince adıyla yan yana; altında tür ve süre */
+.alanlar { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.alanlar .tam { grid-column: 1 / -1; }
+@media (max-width: 560px) {
+  .alanlar { grid-template-columns: 1fr; }
+}
