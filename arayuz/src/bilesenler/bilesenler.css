@@ -1,0 +1,70 @@
+/* Tekrar kullanılan parçaların görünümü. Sınıf adları demodakiyle aynı. */
+
+/* Dugme */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 22px; background: var(--accent); color: var(--ink); border: 1px solid var(--accent); border-radius: var(--radius); font-weight: 700; font-size: 15px; cursor: pointer; transition: background-color .15s, border-color .15s, transform .1s; }
+.btn:hover { background: var(--accent-2); border-color: var(--accent-2); }
+.btn:active { transform: translateY(1px); }
+.btn.ghost { background: transparent; color: var(--fg-2); border-color: var(--line); }
+.btn.ghost:hover { background: var(--surface-2); border-color: var(--line-2); color: var(--fg); }
+.btn.sm { height: 34px; padding: 0 12px; font-size: 14px; font-weight: 600; }
+.btn.blok { width: 100%; }
+.btn:disabled { opacity: .55; cursor: default; transform: none; }
+
+/* Etiket: --fc alanın rengi */
+.tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: var(--fc); color: var(--ink); }
+
+/* PuanHalkasi */
+.ring { --v: 50; --rc: var(--good); width: 48px; height: 48px; border-radius: 50%; flex: none; background: conic-gradient(var(--rc) calc(var(--v) * 1%), var(--line) 0); display: grid; place-items: center; }
+.ring b { width: 38px; height: 38px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* DonenKart */
+.flip { perspective: 1200px; background: none; border: 0; padding: 0; cursor: pointer; display: block; text-align: left; width: 100%; }
+.flip-in { display: block; position: relative; height: 100%; transition: transform .6s; transform-style: preserve-3d; }
+.flip.open .flip-in { transform: rotateY(180deg); }
+.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+.face.back { background: repeating-linear-gradient(45deg, var(--surface-2) 0 14px, var(--surface) 14px 28px); border: 2px solid var(--accent); align-items: center; justify-content: center; font-family: var(--display); font-size: 44px; color: var(--accent); }
+.face.front { transform: rotateY(180deg); background: var(--surface); border: 2px solid var(--fc, var(--line)); }
+
+/* AdimSeridi: numaralı adımlar, aralarında ince çizgi */
+.steps { display: flex; align-items: center; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 0; padding: 0; list-style: none; }
+.steps li { flex: none; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.steps li + li::before { content: ""; width: 16px; height: 1px; background: var(--line-2); margin-right: 2px; }
+.steps .no { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.steps li.on { color: var(--fg); font-weight: 600; }
+.steps li.on .no { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+.steps li.done { color: var(--fg-2); }
+.steps li.done .no { border-color: var(--good); color: var(--good); }
+
+/* Logo: üst üste iki kart */
+.logo { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--fg); text-decoration: none; letter-spacing: -.01em; }
+.logo-isaret { position: relative; width: 22px; height: 26px; flex: none; }
+.logo-isaret::before, .logo-isaret::after { content: ""; position: absolute; inset: 0; border-radius: 5px; }
+.logo-isaret::before { background: var(--c2); transform: translateX(-3px) rotate(-12deg); opacity: .85; }
+.logo-isaret::after { background: var(--accent); transform: translateX(3px) rotate(5deg); }
+
+/* UstCubuk: tam genişlik, içerik ortada */
+.bar { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.bar-ic { max-width: 760px; margin: 0 auto; padding: 14px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 12px; }
+.bar-ic .logo { margin-right: auto; }
+.bar-ic .steps { width: 100%; }
+
+/* GirisCercevesi: ekranın tam ortasında, e-postanın rahat sığacağı kadar dar bir kutu */
+.giris-sayfa { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 32px 16px; }
+.giris-kutu { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+.giris-kart { width: 100%; display: flex; flex-direction: column; gap: 22px; padding: 32px 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.giris-kart .ust { display: flex; flex-direction: column; gap: 6px; text-align: center; }
+.giris-kart .ust h1 { font-size: 24px; }
+.giris-kart .geri { align-self: flex-start; margin: -12px 0 -8px -8px; }
+.giris-kart form { display: flex; flex-direction: column; gap: 16px; }
+.giris-kart form .btn { margin-top: 6px; }
+.giris-alt { font-size: 14px; color: var(--muted); text-align: center; }
+.giris-imza { font-size: 12px; color: var(--muted); opacity: .8; text-align: center; }
+
+@media (max-width: 480px) {
+  .giris-kart { padding: 26px 20px; }
+}
+
+/* "Hareketi azalt" seçen kullanıcıda kart dönmez, anında açılır */
+@media (prefers-reduced-motion: reduce) {
+  .flip-in, .btn, input, select, textarea { transition: none; }
+}
