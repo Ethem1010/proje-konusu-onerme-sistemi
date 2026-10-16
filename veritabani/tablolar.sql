@@ -6,7 +6,7 @@
 BEGIN;
 
 DROP TABLE IF EXISTS yapay_zeka_kullanimi, benzerlik_onbellegi, gorev_adimlari,
-  secilen_projeler, duello_secimleri, projeler, profiller, bolumler, kullanicilar CASCADE;
+  secilen_projeler, duello_secimleri, projeler, havuz_projeleri, profiller, bolumler, kullanicilar CASCADE;
 
 -- 1. Kim giriş yapıyor
 CREATE TABLE kullanicilar (
@@ -38,6 +38,7 @@ CREATE TABLE profiller (
   ekip             SMALLINT    NOT NULL CHECK (ekip >= 1),
   tercih           VARCHAR(20) NOT NULL CHECK (tercih IN ('uretmek', 'arastirmak', 'farketmez')),
   alanlar          JSONB       NOT NULL DEFAULT '[]',
+  istemedikleri    JSONB       NOT NULL DEFAULT '[]',
   beceriler        JSONB       NOT NULL DEFAULT '[]',
   onaylandi        BOOLEAN     NOT NULL DEFAULT false,
   olusturma_tarihi TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -45,10 +46,35 @@ CREATE TABLE profiller (
 );
 CREATE INDEX profiller_kullanici_idx ON profiller(kullanici_id);
 
--- 4. Yapay zekânın ürettiği projeler (profil başına 10)
+-- 4a. Proje havuzu: ekibin hazırladığı ~300 proje (veri/projeler.csv'den yüklenir)
+CREATE TABLE havuz_projeleri (
+  id               INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  baslik           VARCHAR(200) NOT NULL UNIQUE,
+  ne               TEXT         NOT NULL,
+  alan             VARCHAR(30)  NOT NULL,
+  alan2            VARCHAR(30),
+  beceriler        JSONB        NOT NULL DEFAULT '[]',
+  zorluk           SMALLINT     NOT NULL CHECK (zorluk BETWEEN 1 AND 3),
+  hafta            SMALLINT     NOT NULL CHECK (hafta BETWEEN 1 AND 52),
+  tercih           VARCHAR(20)  NOT NULL DEFAULT 'uretmek' CHECK (tercih IN ('uretmek', 'arastirmak')),
+  kim              TEXT,
+  cikti            TEXT,
+  adimlar          JSONB        NOT NULL DEFAULT '[]',
+  kolay            TEXT,
+  efsane           TEXT,
+  esin_kaynagi     VARCHAR(500),
+  ekleyen          VARCHAR(50),
+  secilme_sayisi   INTEGER      NOT NULL DEFAULT 0 CHECK (secilme_sayisi >= 0),
+  olusturma_tarihi TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+CREATE INDEX havuz_projeleri_alan_idx ON havuz_projeleri(alan);
+
+-- 4b. Öğrenciye önerilen projeler (profil başına 10): havuzdan seçilen ya da Gemini'nin ürettiği
 CREATE TABLE projeler (
   id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   profil_id           INTEGER      NOT NULL REFERENCES profiller(id) ON DELETE CASCADE,
+  kaynak              VARCHAR(10)  NOT NULL DEFAULT 'havuz' CHECK (kaynak IN ('havuz', 'gemini')),
+  havuz_proje_id      INTEGER      REFERENCES havuz_projeleri(id) ON DELETE SET NULL,
   baslik              VARCHAR(200) NOT NULL,
   alan                VARCHAR(100) NOT NULL,
   alan2               VARCHAR(100),

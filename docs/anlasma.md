@@ -117,11 +117,12 @@ Arayüz kullanıcıya soldaki metni gösterir, sunucuya sağdaki kodu gönderir.
 
 ## 4. Proje kalıbı
 
-Yapay zekâ projeleri bu kalıpta üretir, sunucu aynı kalıpta arayüze gönderir.
+Havuzdan seçilen ve Gemini'nin ürettiği projeler aynı kalıptadır; sunucu bu kalıpta arayüze gönderir.
 
 | Alan | Tür | Açıklama |
 |---|---|---|
 | `id` | sayı | Veritabanı numarası |
+| `kaynak` | `havuz` / `gemini` | Havuzdan mı seçildi, Gemini mi üretti. Arayüz "Havuzdan" / "Sana özel üretildi" etiketi gösterir |
 | `baslik` | metin | Kısa ve akılda kalan başlık |
 | `alan` | metin | Ana alan (örn. "Robotik") |
 | `alan2` | metin ya da null | İkinci alan |
