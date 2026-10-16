@@ -148,5 +148,9 @@ Yapay zekâ projeleri bu kalıpta üretir, sunucu aynı kalıpta arayüze gönde
 
 | Alan | Tür | Açıklama |
 |---|---|---|
-| `alanlar` | liste | Tam 5 tane `{ "ad": "Robotik", "puan": 5 }`, puan 1-5 |
-| `beceriler` | metin listesi | Öğrencinin bildiği beceriler, örn. `["SolidWorks", "Python"]` |
+| `alanlar` | liste | Tam 5 tane `{ "kod": "oyun", "ad": "Oyun Geliştirme", "puan": 5 }`, puan 1-5 |
+| `istemedikleri` | metin listesi | Öğrencinin istemediğini söylediği alan kodları, örn. `["web"]`. Bu alanlardan proje önerilmez |
+| `beceriler` | metin listesi | Öğrencinin bildiği beceriler, örn. `["Unity", "C#"]` |
+
+Alanlar 12 sabit koddan biridir (`oneri_motoru/etiketler.py`): `web`, `mobil`, `yapay_zeka`, `goruntu_isleme`, `dogal_dil`, `veri_bilimi`, `siber_guvenlik`, `gomulu_iot`, `oyun`, `bulut_devops`, `veritabani`, `ag_dagitik`.
+Profili artık yapay zekâ servisi değil, kendi eğittiğimiz model çıkarır (`oneri_motoru/profil.py`).
