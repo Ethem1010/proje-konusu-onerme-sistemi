@@ -123,8 +123,9 @@ Yapay zekâ projeleri bu kalıpta üretir, sunucu aynı kalıpta arayüze gönde
 |---|---|---|
 | `id` | sayı | Veritabanı numarası |
 | `baslik` | metin | Kısa ve akılda kalan başlık |
-| `alan` | metin | Ana alan (örn. "Robotik") |
-| `alan2` | metin ya da null | İkinci alan |
+| `alan` | metin | Ana alanın kodu (örn. `oyun`), 12 koddan biri |
+| `alan_adi` | metin | Arayüzde gösterilecek ad (örn. "Oyun Geliştirme") |
+| `alan2` | metin ya da null | İkinci alanın kodu |
 | `beceriler` | metin listesi | Gereken beceriler |
 | `zorluk` | 1, 2, 3 | 1 kolay, 3 zor |
 | `hafta` | sayı | Tahmini süre |
@@ -136,7 +137,7 @@ Yapay zekâ projeleri bu kalıpta üretir, sunucu aynı kalıpta arayüze gönde
 | `efsane` | metin | Efsane modda ne eklenir |
 | `puan_uyum` | 0-100 | Öğrenciye uyum |
 | `puan_yapilabilirlik` | 0-100 | Süre, saat ve ekibe sığma |
-| `puan_ozgunluk` | 0-100 | GitHub'daki benzerlere göre |
+| `puan_ozgunluk` | 0-100 | Az seçilen proje yüksek alır; Gemini'nin yeni projeleri 90 |
 | `puan_toplam` | 0-100 | 0,50 x uyum + 0,30 x yapılabilirlik + 0,20 x özgünlük |
 | `benzer_baslik` | metin ya da null | En benzer GitHub projesinin adı |
 | `benzer_link` | metin ya da null | O projenin bağlantısı |
@@ -148,5 +149,9 @@ Yapay zekâ projeleri bu kalıpta üretir, sunucu aynı kalıpta arayüze gönde
 
 | Alan | Tür | Açıklama |
 |---|---|---|
-| `alanlar` | liste | Tam 5 tane `{ "ad": "Robotik", "puan": 5 }`, puan 1-5 |
-| `beceriler` | metin listesi | Öğrencinin bildiği beceriler, örn. `["SolidWorks", "Python"]` |
+| `alanlar` | liste | Tam 5 tane `{ "kod": "oyun", "ad": "Oyun Geliştirme", "puan": 5 }`, puan 1-5 |
+| `istemedikleri` | metin listesi | Öğrencinin istemediğini söylediği alan kodları, örn. `["web"]`. Bu alanlardan proje önerilmez |
+| `beceriler` | metin listesi | Öğrencinin bildiği beceriler, örn. `["Unity", "C#"]` |
+
+Alanlar 12 sabit koddan biridir (`oneri_motoru/etiketler.py`): `web`, `mobil`, `yapay_zeka`, `goruntu_isleme`, `dogal_dil`, `veri_bilimi`, `siber_guvenlik`, `gomulu_iot`, `oyun`, `bulut_devops`, `veritabani`, `ag_dagitik`.
+Profili artık yapay zekâ servisi değil, kendi eğittiğimiz model çıkarır (`oneri_motoru/profil.py`).
