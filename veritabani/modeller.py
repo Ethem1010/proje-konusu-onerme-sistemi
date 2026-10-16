@@ -77,8 +77,9 @@ class Profil(Taban):
     haftalik_saat: Mapped[int] = mapped_column(SmallInteger)
     ekip: Mapped[int] = mapped_column(SmallInteger)
     tercih: Mapped[str] = mapped_column(String(20))  # uretmek, arastirmak, farketmez
-    alanlar: Mapped[list] = mapped_column(JSONB, server_default=BOS_LISTE)
-    beceriler: Mapped[list] = mapped_column(JSONB, server_default=BOS_LISTE)
+    alanlar: Mapped[list] = mapped_column(JSONB, server_default=BOS_LISTE)  # [{"kod","ad","puan"}] x5
+    istemedikleri: Mapped[list] = mapped_column(JSONB, server_default=BOS_LISTE)  # ["web", ...]
+    beceriler: Mapped[list] = mapped_column(JSONB, server_default=BOS_LISTE)  # ["Python", ...]
     onaylandi: Mapped[bool] = mapped_column(Boolean, server_default="false")
     olusturma_tarihi: Mapped[datetime] = simdi()
 
@@ -87,11 +88,42 @@ class Profil(Taban):
     projeler: Mapped[list["Proje"]] = relationship(back_populates="profil")
 
 
+class HavuzProjesi(Taban):
+    """Ekibin hazırladığı proje havuzu. veri/projeler.csv'den yüklenir."""
+
+    __tablename__ = "havuz_projeleri"
+
+    id: Mapped[int] = otomatik_id()
+    baslik: Mapped[str] = mapped_column(String(200), unique=True)
+    ne: Mapped[str] = mapped_column(Text)
+    alan: Mapped[str] = mapped_column(String(30))  # 12 alan kodundan biri (oneri_motoru/etiketler.py)
+    alan2: Mapped[Optional[str]] = mapped_column(String(30))
+    beceriler: Mapped[list] = mapped_column(JSONB, server_default=BOS_LISTE)
+    zorluk: Mapped[int] = mapped_column(SmallInteger)  # 1-3
+    hafta: Mapped[int] = mapped_column(SmallInteger)
+    tercih: Mapped[str] = mapped_column(String(20), server_default="uretmek")  # uretmek, arastirmak
+    kim: Mapped[Optional[str]] = mapped_column(Text)
+    cikti: Mapped[Optional[str]] = mapped_column(Text)
+    adimlar: Mapped[list] = mapped_column(JSONB, server_default=BOS_LISTE)
+    kolay: Mapped[Optional[str]] = mapped_column(Text)
+    efsane: Mapped[Optional[str]] = mapped_column(Text)
+    esin_kaynagi: Mapped[Optional[str]] = mapped_column(String(500))
+    ekleyen: Mapped[Optional[str]] = mapped_column(String(50))
+    secilme_sayisi: Mapped[int] = mapped_column(Integer, server_default="0")  # çok seçilen geri plana düşer
+    olusturma_tarihi: Mapped[datetime] = simdi()
+
+
 class Proje(Taban):
+    """Bir öğrenciye önerilen proje (profil başına 10)."""
+
     __tablename__ = "projeler"
 
     id: Mapped[int] = otomatik_id()
     profil_id: Mapped[int] = mapped_column(ForeignKey("profiller.id", ondelete="CASCADE"))
+    kaynak: Mapped[str] = mapped_column(String(10), server_default="havuz")  # havuz, gemini
+    havuz_proje_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("havuz_projeleri.id", ondelete="SET NULL")
+    )
     baslik: Mapped[str] = mapped_column(String(200))
     alan: Mapped[str] = mapped_column(String(100))
     alan2: Mapped[Optional[str]] = mapped_column(String(100))
@@ -116,6 +148,7 @@ class Proje(Taban):
     olusturma_tarihi: Mapped[datetime] = simdi()
 
     profil: Mapped[Profil] = relationship(back_populates="projeler")
+    havuz_projesi: Mapped[Optional[HavuzProjesi]] = relationship()
 
 
 class DuelloSecimi(Taban):
