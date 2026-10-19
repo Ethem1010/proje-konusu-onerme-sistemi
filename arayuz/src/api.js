@@ -89,3 +89,8 @@ export function ben() {
 export function bolumleriGetir() {
   return istek('/bolumler');
 }
+
+// POST /profil → { id, alanlar, istemedikleri, beceriler, onaylandi }
+export function profilOlustur(govde) {
+  return istek('/profil', { yontem: 'POST', govde, jetonlu: true });
+}
