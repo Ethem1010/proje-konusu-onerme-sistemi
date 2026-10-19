@@ -39,10 +39,10 @@ Durum: ✅ çalışıyor, ⏳ yazılacak (hangi hafta).
 | `POST /auth/giris` | - | ✅ | Jeton verir |
 | `GET /auth/ben` | ✓ | ✅ | Jetonun sahibini verir |
 | `GET /bolumler` | - | ✅ | Bölüm listesi |
-| `POST /profil` | ✓ | ⏳ 2. hafta | Öğrencinin yazısından profil çıkarır |
-| `PUT /profil/{id}` | ✓ | ⏳ 2. hafta | Öğrencinin düzelttiği profili kaydeder ve onaylar |
-| `POST /oneriler/{profil_id}` | ✓ | ⏳ 2. hafta | 10 proje üretir, puanlar, kaydeder |
-| `GET /oneriler/{profil_id}` | ✓ | ⏳ 2. hafta | Kayıtlı 10 projeyi tekrar verir |
+| `POST /profil` | ✓ | ✅ | Öğrencinin yazısından profil çıkarır |
+| `PUT /profil/{id}` | ✓ | ✅ | Öğrencinin düzelttiği profili kaydeder ve onaylar |
+| `POST /oneriler/{profil_id}` | ✓ | ✅ | 10 proje üretir, puanlar, kaydeder |
+| `GET /oneriler/{profil_id}` | ✓ | ✅ | Kayıtlı 10 projeyi tekrar verir |
 | `GET /projeler/{id}` | ✓ | ⏳ 2. hafta | Tek projenin bütün detayı |
 | `POST /duello` | ✓ | ⏳ 3. hafta | Düello seçimini kaydeder |
 | `POST /secim` | ✓ | ⏳ 3. hafta | Seçilen projeyi kaydeder, 12 adımlık haritayı oluşturur |
@@ -68,17 +68,15 @@ Kurallar: ad 2-100 karakter, şifre en az 6 karakter. E-posta küçük harfe çe
 **`GET /bolumler`**: cevap `[{ "id": 1, "ad": "Bilgisayar Mühendisliği", "grup": "muhendislik" }, ...]`
 Önce `muhendislik`, sonra `diger` gelir. "Diğer (bölümünü yaz)" seçeneğini arayüz kendisi ekler.
 
-### 2.2 Yazılacak adresler
-
 **`POST /profil`**
 ```json
 // istek: bolum_id ya da bolum_diger'den biri dolu olmalı
 {
-  "bolum_id": 6,
+  "bolum_id": 1,
   "bolum_diger": null,
   "proje_turu": "donem",
   "sure_hafta": 12,
-  "metin": "SolidWorks ve Arduino biliyorum...",
+  "metin": "Unity ile oyun yapmak istiyorum ama web işlerinden sıkıldım, C# biliyorum.",
   "haftalik_saat": 8,
   "ekip": 3,
   "tercih": "uretmek"
@@ -86,15 +84,37 @@ Kurallar: ad 2-100 karakter, şifre en az 6 karakter. E-posta küçük harfe çe
 // cevap (201)
 {
   "id": 5,
-  "alanlar": [ { "ad": "Robotik", "puan": 5 }, "... toplam 5 tane" ],
-  "beceriler": [ "SolidWorks", "Arduino", "Python" ],
+  "alanlar": [ { "kod": "oyun", "ad": "Oyun Geliştirme", "puan": 5 }, "... toplam 5 tane" ],
+  "istemedikleri": [ "web" ],
+  "beceriler": [ "Unity", "C#" ],
   "onaylandi": false
 }
 ```
+Kurallar: metin 20-5000 karakter, `sure_hafta` 1-24, `haftalik_saat` 1-80, `ekip` 1-20.
+Olmayan `bolum_id`: 400. Profili Gemini değil kendi modelimiz çıkarır, günlük hak harcanmaz.
 
-**`PUT /profil/{id}`**: istek `{ "alanlar": [...], "beceriler": [...] }`, cevap aynı profil, `"onaylandi": true`.
+**`PUT /profil/{id}`**
+```json
+// istek: öğrencinin onay ekranında düzelttiği hâli
+{
+  "alanlar": [ { "kod": "oyun", "puan": 5 }, { "kod": "yapay_zeka", "puan": 3 } ],
+  "istemedikleri": [ "web" ],
+  "beceriler": [ "Unity", "C#" ]
+}
+// cevap (200): POST /profil'in cevabıyla aynı kalıp, "onaylandi": true
+```
+Kurallar: `alanlar` 1-5 tane, her alan bir kez. `ad` gönderilmese de olur, sunucu `kod`'dan doldurur.
+`istemedikleri` ve `beceriler` gönderilmezse boş liste sayılır.
+Bir alan hem `alanlar`'da hem `istemedikleri`'nde olursa ya da bilinmeyen alan kodu gelirse: 422.
+Profil yoksa ya da başkasınınsa: 404.
 
-**`POST /oneriler/{profil_id}`** ve **`GET /oneriler/{profil_id}`**: cevap 10 projelik liste (bkz. 4. bölüm), `puan_toplam`'a göre büyükten küçüğe. İlk 8'inde `"duelloda": true`. Profil onaylanmamışsa 400.
+**`POST /oneriler/{profil_id}`** ve **`GET /oneriler/{profil_id}`**: cevap 10 projelik liste (bkz. 4. bölüm), `puan_toplam`'a göre büyükten küçüğe. İlk 8'inde `"duelloda": true`.
+- `POST` her çağrıldığında listeyi yeniden üretir. Profil onaylanmamışsa 400, düello başladıysa 409.
+- `GET` henüz öneri üretilmediyse boş liste döner.
+- Gemini cevap vermezse ya da öğrencinin günlük hakkı dolduysa hata verilmez, 10 projenin hepsi havuzdan gelir.
+- Günlük hak sadece Gemini gerçekten proje ürettiyse 1 azalır. Sınır `.env`'deki `GUNLUK_YZ_HAKKI` (yazılmazsa 10).
+
+### 2.2 Yazılacak adresler
 
 **`POST /duello`**: istek `{ "profil_id": 5, "kazanan_proje_id": 12, "kaybeden_proje_id": 15, "tur": "ceyrek" }` (`tur`: `ceyrek`, `yari`, `final`).
 
@@ -155,4 +175,4 @@ Havuzdan seçilen ve Gemini'nin ürettiği projeler aynı kalıptadır; sunucu b
 | `beceriler` | metin listesi | Öğrencinin bildiği beceriler, örn. `["Unity", "C#"]` |
 
 Alanlar 12 sabit koddan biridir (`oneri_motoru/etiketler.py`): `web`, `mobil`, `yapay_zeka`, `goruntu_isleme`, `dogal_dil`, `veri_bilimi`, `siber_guvenlik`, `gomulu_iot`, `oyun`, `bulut_devops`, `veritabani`, `ag_dagitik`.
-Profili artık yapay zekâ servisi değil, kendi eğittiğimiz model çıkarır (`oneri_motoru/profil.py`).
+Profili artık yapay zekâ servisi değil, kendi eğittiğimiz model çıkarır (`oneri_motoru/profil.py`).
