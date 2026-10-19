@@ -175,4 +175,4 @@ Havuzdan seçilen ve Gemini'nin ürettiği projeler aynı kalıptadır; sunucu b
 | `beceriler` | metin listesi | Öğrencinin bildiği beceriler, örn. `["Unity", "C#"]` |
 
 Alanlar 12 sabit koddan biridir (`oneri_motoru/etiketler.py`): `web`, `mobil`, `yapay_zeka`, `goruntu_isleme`, `dogal_dil`, `veri_bilimi`, `siber_guvenlik`, `gomulu_iot`, `oyun`, `bulut_devops`, `veritabani`, `ag_dagitik`.
-Profili artık yapay zekâ servisi değil, kendi eğittiğimiz model çıkarır (`oneri_motoru/profil.py`).
+Profili artık yapay zekâ servisi değil, kendi eğittiğimiz model çıkarır (`oneri_motoru/profil.py`).
