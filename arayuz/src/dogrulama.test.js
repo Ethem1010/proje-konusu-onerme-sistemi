@@ -34,21 +34,45 @@ describe('kayitHatasi', () => {
 });
 
 describe('anlatHatasi', () => {
-  const uzun = 'Web sitesi yapmayı seviyorum, React biliyorum.';
+  const iyi = {
+    bolum: '1',
+    bolumAdi: '',
+    saat: '8',
+    ekip: '3',
+    tercih: 'uretmek',
+    metin: 'Web sitesi yapmayı seviyorum, React biliyorum.',
+  };
 
+  it('doğru bilgide sorun yok', () => {
+    expect(anlatHatasi(iyi)).toBeNull();
+  });
   it('bölüm seçilmeli', () => {
-    expect(anlatHatasi({ bolum: '', bolumAdi: '', metin: uzun })).toBe('Bölümünü seç.');
+    expect(anlatHatasi({ ...iyi, bolum: '' })).toBe('Bölümünü seç.');
   });
   it('"Diğer" seçilince bölüm adı en az 3 harf', () => {
-    expect(anlatHatasi({ bolum: 'diger', bolumAdi: 'ab', metin: uzun })).toBe('Bölümünün adını yaz.');
-    expect(anlatHatasi({ bolum: 'diger', bolumAdi: 'Gastronomi', metin: uzun })).toBeNull();
+    expect(anlatHatasi({ ...iyi, bolum: 'diger', bolumAdi: 'ab' })).toBe('Bölümünün adını yaz.');
+    expect(anlatHatasi({ ...iyi, bolum: 'diger', bolumAdi: 'Gastronomi' })).toBeNull();
+  });
+  it('haftalık saat en az 1', () => {
+    for (const saat of ['', '0', 0, -2, '1.5']) {
+      expect(anlatHatasi({ ...iyi, saat })).toBe('Haftada en az 1 saat ayırmalısın.');
+    }
+    expect(anlatHatasi({ ...iyi, saat: '1' })).toBeNull();
+    expect(anlatHatasi({ ...iyi, saat: 40 })).toBeNull();
+  });
+  it('ekip en az 1 kişi', () => {
+    for (const ekip of ['', '0', 0]) {
+      expect(anlatHatasi({ ...iyi, ekip })).toBe('Ekip en az 1 kişi olmalı.');
+    }
+    expect(anlatHatasi({ ...iyi, ekip: '1' })).toBeNull();
+  });
+  it('tercih seçilmeli', () => {
+    expect(anlatHatasi({ ...iyi, tercih: '' })).toBe('Tercihini seç.');
   });
   it('metin 20 karakterden kısaysa uyarır', () => {
-    expect(anlatHatasi({ bolum: '1', bolumAdi: '', metin: 'Bilmiyorum.' })).toBe('Kendini birkaç cümleyle anlat.');
-    expect(anlatHatasi({ bolum: '1', bolumAdi: '', metin: '   ' + 'a'.repeat(19) + '   ' })).toBe(
-      'Kendini birkaç cümleyle anlat.',
-    );
-    expect(anlatHatasi({ bolum: '1', bolumAdi: '', metin: 'a'.repeat(20) })).toBeNull();
+    expect(anlatHatasi({ ...iyi, metin: 'Bilmiyorum.' })).toBe('Kendini birkaç cümleyle anlat.');
+    expect(anlatHatasi({ ...iyi, metin: '   ' + 'a'.repeat(19) + '   ' })).toBe('Kendini birkaç cümleyle anlat.');
+    expect(anlatHatasi({ ...iyi, metin: 'a'.repeat(20) })).toBeNull();
   });
 });
 

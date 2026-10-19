@@ -19,11 +19,20 @@ export function kayitHatasi({ ad, eposta, sifre }) {
 }
 
 // Demodaki kurallar: "Diğer" seçildiyse bölüm adı en az 3 harf, metin en az 20 karakter.
+// Anlaşma belgesindeki kurallar: haftalık saat ve ekip 1 ve üstü bir sayı, tercih seçilmiş olmalı.
 export const EN_KISA_METIN = 20;
 
-export function anlatHatasi({ bolum, bolumAdi, metin }) {
+function birVeUstu(deger) {
+  const sayi = Number(deger);
+  return Number.isInteger(sayi) && sayi >= 1;
+}
+
+export function anlatHatasi({ bolum, bolumAdi, saat, ekip, tercih, metin }) {
   if (!bolum) return 'Bölümünü seç.';
   if (bolum === 'diger' && bolumAdi.trim().length < 3) return 'Bölümünün adını yaz.';
+  if (!birVeUstu(saat)) return 'Haftada en az 1 saat ayırmalısın.';
+  if (!birVeUstu(ekip)) return 'Ekip en az 1 kişi olmalı.';
+  if (!tercih) return 'Tercihini seç.';
   if (metin.trim().length < EN_KISA_METIN) return 'Kendini birkaç cümleyle anlat.';
   return null;
 }
