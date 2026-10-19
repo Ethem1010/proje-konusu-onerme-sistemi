@@ -11,3 +11,5 @@ pyjwt>=2.8
 
 # Öneri motoru (Ethem)
 google-genai>=1.0
+scikit-learn>=1.5
+joblib>=1.4
