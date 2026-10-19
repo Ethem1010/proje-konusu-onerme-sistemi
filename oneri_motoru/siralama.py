@@ -15,6 +15,7 @@ Sunucu kullanımı:
     from oneri_motoru.siralama import oner
     projeler = oner(profil, havuz=havuz_listesi, gemini_kullan=True)
 """
+import logging
 import random
 import sys
 
@@ -217,6 +218,10 @@ def oner(profil, havuz=None, gemini_kullan=True, rastgele=None):
             gemini_projeleri = [puanla(p, profil) for p in yeni_projeler(profil, haric_basliklar=en_iyi_basliklar)]
         except YapayZekaHatasi:
             gemini_projeleri = []  # Gemini yoksa öğrenci fark etmez, sadece havuzdan önerilir
+        except Exception:
+            # Beklenmedik bir hata (ör. Gemini'nin cevabında tuhaf bir değer) de öneriyi durdurmasın
+            logging.getLogger(__name__).exception("Gemini projeleri eklenemedi, sadece havuzdan öneriliyor")
+            gemini_projeleri = []
 
     secilen = sec(
         adaylar + gemini_projeleri,
