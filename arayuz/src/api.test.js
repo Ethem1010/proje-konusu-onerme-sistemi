@@ -1,5 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SUNUCU_ADRESI, ben, bolumleriGetir, cikisYap, girisYap, jetonuAl, jetonuKaydet, kullaniciAdi } from './api.js';
+import {
+  SUNUCU_ADRESI,
+  ben,
+  bolumleriGetir,
+  cikisYap,
+  girisYap,
+  jetonuAl,
+  jetonuKaydet,
+  kullaniciAdi,
+  profilOlustur,
+} from './api.js';
 
 function sahteCevap(durum, govde) {
   return Promise.resolve({ ok: durum >= 200 && durum < 300, status: durum, json: () => Promise.resolve(govde) });
@@ -54,6 +64,21 @@ describe('api', () => {
 
     await ben();
     expect(fetchSahte.mock.calls[0][1].headers.Authorization).toBe('Bearer abc');
+  });
+
+  it('profili jetonla POST /profil adresine gönderir, dönen profili verir', async () => {
+    jetonuKaydet({ erisim_jetonu: 'abc', ad: 'Ayşe' });
+    const profil = { id: 5, alanlar: [], istemedikleri: [], beceriler: [], onaylandi: false };
+    const fetchSahte = vi.fn(() => sahteCevap(201, profil));
+    vi.stubGlobal('fetch', fetchSahte);
+    const govde = { bolum_id: 1, bolum_diger: null, proje_turu: 'donem', sure_hafta: 12, metin: 'x', haftalik_saat: 8, ekip: 3, tercih: 'uretmek' };
+
+    expect(await profilOlustur(govde)).toEqual(profil);
+    const [adres, ayar] = fetchSahte.mock.calls[0];
+    expect(adres).toBe(`${SUNUCU_ADRESI}/profil`);
+    expect(ayar.method).toBe('POST');
+    expect(ayar.headers.Authorization).toBe('Bearer abc');
+    expect(JSON.parse(ayar.body)).toEqual(govde);
   });
 
   it('jeton kaydedilir ve çıkışta silinir', () => {
