@@ -21,5 +21,5 @@ Thumbs.db
 oneri_motoru/model/
 
 # Formdan gelen gerçek öğrenci cevapları herkese açık repoya konmaz
-veri/form*.csv
-veri/test*.csv
+veri/form*
+veri/test*

@@ -20,7 +20,7 @@ from scipy.sparse import hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
-from .etiketler import ALAN_KODLARI, turkce_kucuk
+from .etiketler import ALAN_KODLARI, sade
 
 MODEL_DOSYASI = Path(__file__).resolve().parent / "model" / "profil_modeli.joblib"
 
@@ -30,10 +30,13 @@ OLUMSUZ, YOK, OLUMLU = -1, 0, 1
 # "oyun ilgimi çekiyor" ile "oyun hiç istemiyorum" ikisinde de "oyun" kelimesi geçer.
 # Model bunları ayırabilsin diye olumsuz cümle parçasındaki kelimelerin başına "olmz_" eklenir:
 #   "web istemiyorum" -> "olmz_web olmz_istemiyorum"
-_PARCA_SINIRI = re.compile(r"[,.;:!?\n]+|\b(?:ama|fakat|ancak|yalnız|lakin)\b")
+# Metin önce sadeleştirilir (etiketler.sade: "ı"->"i", "ğ"->"g"...), bu yüzden kalıplar Türkçe harfsiz yazılı.
+# "istemiyom", "istemiyorum", "istemiyorm" hepsi "m[iu]yo" ile yakalanır.
+_PARCA_SINIRI = re.compile(r"[,.;:!?\n]+|\b(?:ama|fakat|ancak|yalniz|lakin)\b")
 _OLUMSUZLUK = re.compile(
-    r"\b\w+(?:m[ıiuü]yor\w*|m[ae]z\w*|m[ae]s[ıi]n\w*|m[ae]y[ıi]n\w*|m[ae]y[ıi]z\w*|m[ae]d[ıi]\w*|(?<!ta)m[ae]m)\b"
-    r"|\b(?:sıkıl|bık|nefret|asla|değil|kaldım|uzak dur|hoşlanma|sevme|isteme)\w*"
+    r"\b\w+(?:m[iu]yo\w*|m[ae]z\w*|m[ae]s[i]n\w*|m[ae]y[i]n\w*|m[ae]y[i]z\w*|m[ae]d[i]\w*|(?<!ta)m[ae]m)\b"
+    r"|\b(?:sikil|bik[tkm]|nefret|asla|degil|kaldim|uzak dur)\w*"
+    r"|\b(?:hoslanma|sevme|isteme)(?!k)\w*"  # "sevmek", "istemek" olumsuz değil
 )
 
 
@@ -47,7 +50,7 @@ def olumsuz_isaretle(metin):
 
 
 def _on_isle(metin):
-    return olumsuz_isaretle(turkce_kucuk(metin))
+    return olumsuz_isaretle(sade(metin))
 
 
 def _sinif(etiket):
@@ -64,7 +67,7 @@ class ProfilModeli:
             preprocessor=_on_isle, ngram_range=(1, 2), min_df=1, sublinear_tf=True
         )
         self.parca = TfidfVectorizer(
-            preprocessor=turkce_kucuk, analyzer="char_wb", ngram_range=(3, 5), min_df=1, sublinear_tf=True
+            preprocessor=sade, analyzer="char_wb", ngram_range=(3, 5), min_df=1, sublinear_tf=True
         )
         self.siniflandiricilar = {}
 
