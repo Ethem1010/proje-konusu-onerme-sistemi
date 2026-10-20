@@ -1,4 +1,5 @@
 // Sunucuya istek gönderen tek yer. Ekranlar fetch'i doğrudan çağırmaz, buradaki fonksiyonları kullanır.
+import { akisiTemizle } from './akis.js';
 
 // Seyithan'ın sunucusu: `uvicorn sunucu.main:app --reload` ile bu adreste açılır.
 // Başka bir adres gerekirse `.env` dosyasında VITE_SUNUCU_ADRESI ile değiştirilir.
@@ -25,6 +26,7 @@ export function kullaniciAdi() {
 export function cikisYap() {
   localStorage.removeItem(JETON_ANAHTARI);
   localStorage.removeItem(AD_ANAHTARI);
+  akisiTemizle(); // aynı sekmede giriş yapan başka biri öncekinin cevaplarını görmesin
 }
 
 // --- Genel istek -----------------------------------------------------------
@@ -36,11 +38,16 @@ export class SunucuHatasi extends Error {
   }
 }
 
-// FastAPI hatayı { detail: "..." } olarak döner. Alan kontrolü hatasında (422)
-// detail bir listedir; kullanıcıya teknik metin göstermemek için sade bir cümle verilir.
+// FastAPI hatayı { detail: "..." } olarak döner. Alan kontrolü hatasında (422) detail bir listedir:
+// sunucunun kendi yazdığı kural cümlesi varsa ("Value error, Bir alan hem …") o gösterilir,
+// yoksa kullanıcıya teknik metin göstermemek için sade bir cümle verilir.
 function hataMesaji(govde, durum) {
   if (govde && typeof govde.detail === 'string') return govde.detail;
-  if (durum === 422) return 'Bilgileri kontrol edip tekrar dene.';
+  if (durum === 422) {
+    const kural = Array.isArray(govde?.detail) && govde.detail.find((h) => h?.type === 'value_error');
+    if (kural && typeof kural.msg === 'string') return kural.msg.replace(/^Value error, /, '');
+    return 'Bilgileri kontrol edip tekrar dene.';
+  }
   return 'Bir sorun oluştu, birazdan tekrar dene.';
 }
 
@@ -64,8 +71,17 @@ export async function istek(yol, { yontem = 'GET', govde, jetonlu = false } = {}
   }
 
   const veri = await cevap.json().catch(() => null);
-  if (!cevap.ok) throw new SunucuHatasi(hataMesaji(veri, cevap.status), cevap.status);
+  if (!cevap.ok) {
+    // Jeton yok, geçersiz ya da süresi dolmuş: jeton silinir, ekran öğrenciyi girişe gönderir.
+    if (jetonlu && cevap.status === 401) cikisYap();
+    throw new SunucuHatasi(hataMesaji(veri, cevap.status), cevap.status);
+  }
   return veri;
+}
+
+// Giriş gerektiren bir istekte oturum düştü mü (401)? Düştüyse ekran girişe yönlendirir.
+export function oturumDustu(hata) {
+  return hata?.durum === 401;
 }
 
 // --- Adresler (Seyithan'ın sunucusu) ---------------------------------------
@@ -93,4 +109,19 @@ export function bolumleriGetir() {
 // POST /profil → { id, alanlar, istemedikleri, beceriler, onaylandi }
 export function profilOlustur(govde) {
   return istek('/profil', { yontem: 'POST', govde, jetonlu: true });
+}
+
+// PUT /profil/{id} → aynı kalıp, onaylandi: true. Bir alan hem ilgi hem istemediklerdeyse 422.
+export function profilOnayla(id, { alanlar, istemedikleri, beceriler }) {
+  return istek(`/profil/${id}`, { yontem: 'PUT', govde: { alanlar, istemedikleri, beceriler }, jetonlu: true });
+}
+
+// GET /oneriler/{profilId} → kayıtlı 10 proje; henüz üretilmediyse boş liste
+export function onerileriGetir(profilId) {
+  return istek(`/oneriler/${profilId}`, { jetonlu: true });
+}
+
+// POST /oneriler/{profilId} → 10 proje üretir (Gemini yüzünden 5-10 saniye sürebilir)
+export function onerileriUret(profilId) {
+  return istek(`/oneriler/${profilId}`, { yontem: 'POST', jetonlu: true });
 }

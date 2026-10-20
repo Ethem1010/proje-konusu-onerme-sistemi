@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import AdimSeridi from './AdimSeridi.jsx';
 import DonenKart from './DonenKart.jsx';
 import Dugme from './Dugme.jsx';
@@ -27,9 +27,32 @@ describe('Dugme', () => {
 });
 
 describe('Etiket', () => {
-  it('alan rengini kullanır', () => {
-    render(<Etiket renk={3}>Web</Etiket>);
+  it('alan rengini kullanır; renk verilmezse kendi gri rengi kalır', () => {
+    render(
+      <>
+        <Etiket renk={3}>Web</Etiket>
+        <Etiket>Python</Etiket>
+      </>,
+    );
     expect(screen.getByText('Web').style.getPropertyValue('--fc')).toBe('var(--c3)');
+    expect(screen.getByText('Python').style.getPropertyValue('--fc')).toBe('');
+  });
+
+  it('kaldir verilince × düğmesi çıkar ve dokununca çağrılır', async () => {
+    const kaldir = vi.fn();
+    render(
+      <Etiket buyuk kaldir={kaldir}>
+        Python
+      </Etiket>,
+    );
+    expect(screen.getByText('Python')).toHaveClass('tag', 'buyuk');
+    await userEvent.click(screen.getByRole('button', { name: 'Python kaldır' }));
+    expect(kaldir).toHaveBeenCalledTimes(1);
+  });
+
+  it('kaldir verilmezse düğme yok', () => {
+    render(<Etiket>Web</Etiket>);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });
 
