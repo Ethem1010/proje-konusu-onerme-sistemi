@@ -10,8 +10,12 @@
 .btn.blok { width: 100%; }
 .btn:disabled { opacity: .55; cursor: default; transform: none; }
 
-/* Etiket: --fc alanın rengi */
-.tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: var(--fc); color: var(--ink); }
+/* Etiket: --fc alanın rengi (verilmezse gri). Zemin rengin açığı, yazı temanın yazı rengi:
+   iki temada da okunur. .buyuk: küçük harfli, beceri ve alan listeleri için. */
+.tag { --fc: var(--muted); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; background: color-mix(in srgb, var(--fc) 18%, transparent); border: 1px solid color-mix(in srgb, var(--fc) 55%, transparent); color: var(--fg); }
+.tag.buyuk { height: 34px; padding: 0 8px 0 13px; font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.tag-x { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.tag-x:hover { background: color-mix(in srgb, var(--fc) 30%, transparent); color: var(--fg); }
 
 /* PuanHalkasi */
 .ring { --v: 50; --rc: var(--good); width: 48px; height: 48px; border-radius: 50%; flex: none; background: conic-gradient(var(--rc) calc(var(--v) * 1%), var(--line) 0); display: grid; place-items: center; }
@@ -39,7 +43,7 @@
 .logo { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--fg); text-decoration: none; letter-spacing: -.01em; }
 .logo-isaret { position: relative; width: 22px; height: 26px; flex: none; }
 .logo-isaret::before, .logo-isaret::after { content: ""; position: absolute; inset: 0; border-radius: 5px; }
-.logo-isaret::before { background: var(--c2); transform: translateX(-3px) rotate(-12deg); opacity: .85; }
+.logo-isaret::before { background: var(--c4); transform: translateX(-3px) rotate(-12deg); opacity: .9; }
 .logo-isaret::after { background: var(--accent); transform: translateX(3px) rotate(5deg); }
 
 /* UstCubuk: tam genişlik, içerik ortada */
@@ -49,7 +53,12 @@
 .bar-ic .steps { width: 100%; }
 
 /* GirisCercevesi: ekranın tam ortasında, e-postanın rahat sığacağı kadar dar bir kutu */
-.giris-sayfa { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 32px 16px; }
+.giris-sayfa { position: relative; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 32px 16px; }
+.giris-tema { position: absolute; top: 16px; right: 16px; }
+
+/* TemaDugmesi: sadece simge, kare */
+.btn.tema-dugmesi { width: 34px; padding: 0; }
+.tema-dugmesi svg { flex: none; }
 .giris-kutu { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
 .giris-kart { width: 100%; display: flex; flex-direction: column; gap: 22px; padding: 32px 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
 .giris-kart .ust { display: flex; flex-direction: column; gap: 6px; text-align: center; }
@@ -62,6 +71,8 @@
 
 @media (max-width: 480px) {
   .giris-kart { padding: 26px 20px; }
+  /* Telefonda geri, logo, tema ve "Çıkış" tek satıra sığsın */
+  .bar-ic { padding: 12px 16px; column-gap: 8px; }
 }
 
 /* "Hareketi azalt" seçen kullanıcıda kart dönmez, anında açılır */

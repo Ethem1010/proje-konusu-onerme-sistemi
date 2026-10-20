@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { bolumleriGetir, profilOlustur } from '../api.js';
+import { ANAHTARLAR, akisSil, akisYaz } from '../akis.js';
+import { bolumleriGetir, oturumDustu, profilOlustur } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
 import UstCubuk from '../bilesenler/UstCubuk.jsx';
 import { anlatHatasi, bolumleriGrupla } from '../dogrulama.js';
@@ -20,8 +21,8 @@ export const TERCIHLER = [
   { kod: 'farketmez', ad: 'Fark etmez' },
 ];
 
-// Yazılanlar sekme kapanana kadar bu anahtarla saklanır.
-export const TASLAK_ANAHTARI = 'konu_kartlari_anlat';
+// Yazılanlar sekme kapanana kadar bu anahtarla saklanır; çıkış yapınca silinir (akis.js).
+export const TASLAK_ANAHTARI = ANAHTARLAR.anlat;
 
 function taslakOku() {
   try {
@@ -111,8 +112,15 @@ export default function Anlat() {
         ekip: bilgiler.ekip,
         tercih,
       });
+      // Sunucuda profili okuyan bir adres yok; profil ekranı onu buradan alır. Yeni profilin önerileri yenidir.
+      akisYaz('profil', profil);
+      akisSil('oneriler');
       git(`/profil/${profil.id}`);
     } catch (hataNesnesi) {
+      if (oturumDustu(hataNesnesi)) {
+        git('/giris', { replace: true, state: { mesaj: hataNesnesi.message } });
+        return;
+      }
       setHata(hataNesnesi.message);
       setBekliyor(false);
     }
