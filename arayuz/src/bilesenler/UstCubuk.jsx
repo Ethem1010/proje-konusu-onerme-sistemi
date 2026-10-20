@@ -4,8 +4,9 @@ import AdimSeridi from './AdimSeridi.jsx';
 import Dugme from './Dugme.jsx';
 import GeriDugmesi from './GeriDugmesi.jsx';
 import Logo from './Logo.jsx';
+import TemaDugmesi from './TemaDugmesi.jsx';
 
-// Her ekranın üstündeki çubuk: sol üstte geri, logo, girişliyse "Çıkış", altında adım şeridi.
+// Her ekranın üstündeki çubuk: sol üstte geri, logo, tema düğmesi, girişliyse "Çıkış", altında adım şeridi.
 export default function UstCubuk({ geri, adim }) {
   const git = useNavigate();
 
@@ -19,6 +20,7 @@ export default function UstCubuk({ geri, adim }) {
       <div className="bar-ic">
         {geri && <GeriDugmesi adres={geri} />}
         <Logo />
+        <TemaDugmesi />
         {jetonuAl() && (
           <Dugme tur="ghost" kucuk onClick={cik}>
             Çıkış

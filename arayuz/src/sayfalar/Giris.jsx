@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { girisYap, jetonuKaydet } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
 import GirisCercevesi from '../bilesenler/GirisCercevesi.jsx';
@@ -7,9 +7,11 @@ import { girisHatasi } from '../dogrulama.js';
 
 export default function Giris() {
   const git = useNavigate();
+  const konum = useLocation();
   const [eposta, setEposta] = useState('');
   const [sifre, setSifre] = useState('');
-  const [hata, setHata] = useState('');
+  // Oturumu düşüp buraya gönderilen öğrenci nedenini görsün (ör. "Oturumun süresi doldu…").
+  const [hata, setHata] = useState(konum.state?.mesaj ?? '');
   const [bekliyor, setBekliyor] = useState(false);
 
   async function gonder(e) {
