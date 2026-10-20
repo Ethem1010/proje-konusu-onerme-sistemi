@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { akisOku, akisYaz } from './akis.js';
 import {
   SUNUCU_ADRESI,
   ben,
@@ -8,7 +9,11 @@ import {
   jetonuAl,
   jetonuKaydet,
   kullaniciAdi,
+  onerileriGetir,
+  onerileriUret,
+  oturumDustu,
   profilOlustur,
+  profilOnayla,
 } from './api.js';
 
 function sahteCevap(durum, govde) {
@@ -87,5 +92,70 @@ describe('api', () => {
     expect(kullaniciAdi()).toBe('Ayşe');
     cikisYap();
     expect(jetonuAl()).toBeNull();
+  });
+
+  it('çıkışta öğrencinin cevapları da silinir', () => {
+    akisYaz('anlat', { metin: 'x' });
+    akisYaz('profil', { id: 1 });
+    cikisYap();
+    expect(akisOku('anlat')).toBeNull();
+    expect(akisOku('profil')).toBeNull();
+  });
+
+  it('giriş gerektiren istekte 401 gelirse jeton silinir', async () => {
+    jetonuKaydet({ erisim_jetonu: 'abc', ad: 'Ayşe' });
+    vi.stubGlobal('fetch', () => sahteCevap(401, { detail: 'Oturumun süresi doldu, tekrar giriş yap.' }));
+    const hata = await profilOlustur({}).catch((h) => h);
+    expect(hata).toMatchObject({ durum: 401, message: 'Oturumun süresi doldu, tekrar giriş yap.' });
+    expect(oturumDustu(hata)).toBe(true);
+    expect(jetonuAl()).toBeNull();
+  });
+
+  it('yanlış şifrede (giriş, jetonsuz istek) 401 jetonu silmez', async () => {
+    jetonuKaydet({ erisim_jetonu: 'abc', ad: 'Ayşe' });
+    vi.stubGlobal('fetch', () => sahteCevap(401, { detail: 'E-posta veya şifre hatalı.' }));
+    await girisYap({ eposta: 'a@b.com', sifre: 'x' }).catch(() => {});
+    expect(jetonuAl()).toBe('abc');
+  });
+
+  it('422 hatasında sunucunun kendi yazdığı kural cümlesi Türkçe gösterilir', async () => {
+    const detail = [
+      {
+        type: 'value_error',
+        loc: ['body'],
+        msg: 'Value error, Bir alan hem ilgi alanlarında hem istemediklerinde olamaz.',
+      },
+    ];
+    vi.stubGlobal('fetch', () => sahteCevap(422, { detail }));
+    await expect(profilOnayla(5, { alanlar: [], istemedikleri: [], beceriler: [] })).rejects.toMatchObject({
+      durum: 422,
+      message: 'Bir alan hem ilgi alanlarında hem istemediklerinde olamaz.',
+    });
+  });
+
+  it('onay PUT /profil/{id} ile alanları, istenmeyenleri ve becerileri gönderir', async () => {
+    jetonuKaydet({ erisim_jetonu: 'abc', ad: 'Ayşe' });
+    const fetchSahte = vi.fn(() => sahteCevap(200, { id: 5, onaylandi: true }));
+    vi.stubGlobal('fetch', fetchSahte);
+
+    const govde = { alanlar: [{ kod: 'web', ad: 'Web Geliştirme', puan: 4 }], istemedikleri: ['oyun'], beceriler: ['React'] };
+    await profilOnayla(5, govde);
+    const [adres, ayar] = fetchSahte.mock.calls[0];
+    expect(adres).toBe(`${SUNUCU_ADRESI}/profil/5`);
+    expect(ayar.method).toBe('PUT');
+    expect(ayar.headers.Authorization).toBe('Bearer abc');
+    expect(JSON.parse(ayar.body)).toEqual(govde);
+  });
+
+  it('öneriler GET ile kayıtlı hâli alınır, POST ile üretilir', async () => {
+    const fetchSahte = vi.fn(() => sahteCevap(200, []));
+    vi.stubGlobal('fetch', fetchSahte);
+
+    await onerileriGetir(5);
+    await onerileriUret(5);
+    expect(fetchSahte.mock.calls[0][0]).toBe(`${SUNUCU_ADRESI}/oneriler/5`);
+    expect(fetchSahte.mock.calls[0][1].method).toBe('GET');
+    expect(fetchSahte.mock.calls[1][0]).toBe(`${SUNUCU_ADRESI}/oneriler/5`);
+    expect(fetchSahte.mock.calls[1][1].method).toBe('POST');
   });
 });

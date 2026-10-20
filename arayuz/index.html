@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Konu Kartları</title>
+    <script>
+      // Tema sayfa çizilmeden seçilsin ki açılışta renk sıçraması olmasın (kural src/tema.js ile aynı).
+      try {
+        var tema = localStorage.getItem('konu_kartlari_tema');
+        if (tema !== 'acik' && tema !== 'koyu') tema = matchMedia('(prefers-color-scheme: dark)').matches ? 'koyu' : 'acik';
+        document.documentElement.dataset.tema = tema;
+      } catch (e) {
+        document.documentElement.dataset.tema = 'acik';
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

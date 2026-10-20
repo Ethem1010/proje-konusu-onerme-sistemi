@@ -1,11 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App.jsx';
+import { akisOku, akisYaz } from '../akis.js';
 import { SunucuHatasi } from '../api.js';
 import * as api from '../api.js';
-import Anlat, { TASLAK_ANAHTARI } from './Anlat.jsx';
+import { TASLAK_ANAHTARI } from './Anlat.jsx';
+import Oneriler from './Oneriler.jsx';
 
 // Sunucu yerine sahte cevaplar; jeton işlemleri gerçek kalır.
 vi.mock('../api.js', async (gercek) => ({
@@ -14,6 +16,9 @@ vi.mock('../api.js', async (gercek) => ({
   kayitOl: vi.fn(),
   bolumleriGetir: vi.fn(),
   profilOlustur: vi.fn(),
+  profilOnayla: vi.fn(),
+  onerileriGetir: vi.fn(),
+  onerileriUret: vi.fn(),
 }));
 
 const BOLUMLER = [
@@ -36,22 +41,20 @@ function ac(adres) {
   );
 }
 
-// Profil ekranı henüz yok; "Devam et"in hangi adrese geçtiğini görmek için yerine bir başlık konur.
-function ProfilYeri() {
-  const { id } = useParams();
-  return <h1>Profil {id}</h1>;
-}
-
-function anlatAc() {
-  return render(
-    <MemoryRouter initialEntries={['/anlat']}>
-      <Routes>
-        <Route path="/anlat" element={<Anlat />} />
-        <Route path="/profil/:id" element={<ProfilYeri />} />
-      </Routes>
-    </MemoryRouter>,
-  );
-}
+// POST /profil cevabı (docs/anlasma.md, 5. bölüm)
+const PROFIL = {
+  id: 5,
+  alanlar: [
+    { kod: 'mobil', ad: 'Mobil Uygulama', puan: 5 },
+    { kod: 'yapay_zeka', ad: 'Yapay Zekâ ve Makine Öğrenmesi', puan: 4 },
+    { kod: 'veri_bilimi', ad: 'Veri Bilimi ve Analitik', puan: 3 },
+    { kod: 'goruntu_isleme', ad: 'Görüntü İşleme', puan: 2 },
+    { kod: 'web', ad: 'Web Geliştirme', puan: 2 },
+  ],
+  istemedikleri: ['oyun'],
+  beceriler: ['Flutter'],
+  onaylandi: false,
+};
 
 const METIN = 'Web sitesi yapmayı seviyorum, React biliyorum.';
 
@@ -278,14 +281,17 @@ describe('Seni tanıyalım (Anlat)', () => {
     expect(api.profilOlustur).not.toHaveBeenCalled();
   });
 
-  it('"Dönem projesi" seçilince sunucuya donem gider; dönen id ile profil ekranına geçer', async () => {
-    vi.mocked(api.profilOlustur).mockResolvedValue({ id: 5, alanlar: [], istemedikleri: [], beceriler: [], onaylandi: false });
-    anlatAc();
+  it('"Dönem projesi" seçilince sunucuya donem gider; dönen profil saklanır, profil ekranına geçilir', async () => {
+    vi.mocked(api.profilOlustur).mockResolvedValue(PROFIL);
+    akisYaz('oneriler', { profilId: '4', liste: [] }); // önceki profilin önerileri
+    ac('/anlat');
     await doldur();
     await userEvent.selectOptions(screen.getByLabelText('Proje türü'), 'Dönem projesi');
     await userEvent.click(screen.getByRole('button', { name: 'Devam et' }));
 
-    expect(await screen.findByRole('heading', { name: 'Profil 5' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Doğru anladık mı?' })).toBeInTheDocument();
+    expect(akisOku('profil')).toEqual(PROFIL);
+    expect(akisOku('oneriler')).toBeNull();
     expect(api.profilOlustur).toHaveBeenCalledWith({
       bolum_id: 1,
       bolum_diger: null,
@@ -299,15 +305,15 @@ describe('Seni tanıyalım (Anlat)', () => {
   });
 
   it('"Diğer" bölümde bolum_diger gider; bilgiler tarayıcıda da saklanır', async () => {
-    vi.mocked(api.profilOlustur).mockResolvedValue({ id: 9 });
-    anlatAc();
+    vi.mocked(api.profilOlustur).mockResolvedValue({ ...PROFIL, id: 9 });
+    ac('/anlat');
     await doldur({ bolum: 'diger', saat: '10', ekip: '1', tercih: 'arastirmak', metin: 'Yemek fotoğrafçılığını seviyorum, Excel biliyorum.' });
     await userEvent.type(screen.getByLabelText('Bölümünün adı'), ' Gastronomi ');
     await userEvent.selectOptions(screen.getByLabelText('Proje türü'), 'Bitirme projesi');
     await userEvent.selectOptions(screen.getByLabelText('Süre'), '16');
     await userEvent.click(screen.getByRole('button', { name: 'Devam et' }));
 
-    expect(await screen.findByRole('heading', { name: 'Profil 9' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Doğru anladık mı?' })).toBeInTheDocument();
     expect(api.profilOlustur).toHaveBeenCalledWith({
       bolum_id: null,
       bolum_diger: 'Gastronomi',
@@ -334,7 +340,7 @@ describe('Seni tanıyalım (Anlat)', () => {
   it('gönderilirken düğme kilitlenir, iki kez gönderilemez', async () => {
     let bitir;
     vi.mocked(api.profilOlustur).mockReturnValue(new Promise((cozum) => (bitir = cozum)));
-    anlatAc();
+    ac('/anlat');
     await doldur();
     await userEvent.click(screen.getByRole('button', { name: 'Devam et' }));
 
@@ -343,13 +349,25 @@ describe('Seni tanıyalım (Anlat)', () => {
     await userEvent.click(dugme);
     expect(api.profilOlustur).toHaveBeenCalledTimes(1);
 
-    bitir({ id: 5 });
-    expect(await screen.findByRole('heading', { name: 'Profil 5' })).toBeInTheDocument();
+    bitir(PROFIL);
+    expect(await screen.findByRole('heading', { name: 'Doğru anladık mı?' })).toBeInTheDocument();
+  });
+
+  it('oturum düştüyse (401) girişe gönderir ve nedenini gösterir', async () => {
+    vi.mocked(api.profilOlustur).mockImplementation(async () => {
+      api.cikisYap(); // gerçek istek() 401'de jetonu böyle siler
+      throw new SunucuHatasi('Oturumun süresi doldu, tekrar giriş yap.', 401);
+    });
+    ac('/anlat');
+    await doldur();
+    await userEvent.click(screen.getByRole('button', { name: 'Devam et' }));
+    expect(await screen.findByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Oturumun süresi doldu, tekrar giriş yap.');
   });
 
   it('sunucu hata verirse mesajı gösterir, ekranda kalır, yazılanlar kaybolmaz', async () => {
     vi.mocked(api.profilOlustur).mockRejectedValue(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0));
-    anlatAc();
+    ac('/anlat');
     await doldur();
     await userEvent.click(screen.getByRole('button', { name: 'Devam et' }));
 
@@ -397,7 +415,7 @@ describe('Seni tanıyalım (Anlat)', () => {
   it('taslaktaki bölüm artık listede yoksa seçilmemiş sayılır', async () => {
     vi.mocked(api.bolumleriGetir).mockResolvedValue(IKI_BOLUM);
     sessionStorage.setItem(TASLAK_ANAHTARI, JSON.stringify({ bolum: '27', bolumId: 27, bolumAdi: 'İşletme', metin: METIN }));
-    anlatAc();
+    ac('/anlat');
     await doldur({ bolum: '', metin: '' });
     expect(screen.getByLabelText('Bölüm')).toHaveValue('');
     await userEvent.click(screen.getByRole('button', { name: 'Devam et' }));
@@ -416,10 +434,360 @@ describe('Seni tanıyalım (Anlat)', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('"Çıkış" jetonu siler ve girişe döner', async () => {
+  it('"Çıkış" jetonu ve cevapları siler, girişe döner', async () => {
+    akisYaz('anlat', { bolum: '1', metin: METIN });
+    akisYaz('profil', PROFIL);
     ac('/anlat');
     await userEvent.click(screen.getByRole('button', { name: 'Çıkış' }));
     expect(screen.getByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument();
     expect(api.jetonuAl()).toBeNull();
+    expect(akisOku('anlat')).toBeNull();
+    expect(akisOku('profil')).toBeNull();
+  });
+});
+
+// --- Profil onayı ------------------------------------------------------------
+
+function alanSatirlari() {
+  return within(screen.getByRole('list', { name: 'İlgi alanların' })).getAllByRole('listitem');
+}
+
+describe('Profil onayı', () => {
+  beforeEach(() => api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' }));
+
+  it('profil yoksa "Seni tanıyalım"a döner', async () => {
+    ac('/profil/5');
+    expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
+  });
+
+  it('adresteki numara saklanan profilden farklıysa da döner', async () => {
+    akisYaz('profil', PROFIL);
+    ac('/profil/9');
+    expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
+  });
+
+  it('5 alan sunucunun sırasıyla, puanlarıyla görünür', () => {
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    const satirlar = alanSatirlari();
+    expect(satirlar).toHaveLength(5);
+    expect(within(satirlar[0]).getByRole('combobox')).toHaveValue('mobil');
+    expect(within(satirlar[4]).getByRole('combobox')).toHaveValue('web');
+    expect(screen.getByRole('button', { name: 'Mobil Uygulama 5 puan' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Web Geliştirme 2 puan' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('sunucu alan adını göndermezse koddan bulunur', () => {
+    akisYaz('profil', { ...PROFIL, alanlar: PROFIL.alanlar.map(({ kod, puan }) => ({ kod, puan })) });
+    ac('/profil/5');
+    expect(screen.getByRole('button', { name: 'Görüntü İşleme 2 puan' })).toBeInTheDocument();
+  });
+
+  it('noktaya dokununca puan değişir', async () => {
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    await userEvent.click(screen.getByRole('button', { name: 'Web Geliştirme 4 puan' }));
+    expect(screen.getByRole('button', { name: 'Web Geliştirme 4 puan' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Web Geliştirme 2 puan' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it("alan 12'lik listeden değiştirilir; profildeki ve istenmeyen alanlar listede çıkmaz", async () => {
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    const liste = screen.getByLabelText('Web Geliştirme yerine başka alan seç');
+    const secenekler = [...liste.options].map((o) => o.value);
+    expect(secenekler).toHaveLength(12 - 5 - 1 + 1); // kendisi + boştaki 6 alan
+    expect(secenekler).not.toContain('mobil');
+    expect(secenekler).not.toContain('oyun');
+
+    await userEvent.selectOptions(liste, 'dogal_dil');
+    expect(within(alanSatirlari()[4]).getByRole('combobox')).toHaveValue('dogal_dil');
+    expect(screen.getByRole('button', { name: 'Doğal Dil İşleme 2 puan' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('"Bunları önermeyeceğiz": istenmeyen alan × ile kalkar, listeden eklenir', async () => {
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    await userEvent.click(screen.getByRole('button', { name: 'Oyun Geliştirme kaldır' }));
+    expect(screen.queryByRole('button', { name: 'Oyun Geliştirme kaldır' })).not.toBeInTheDocument();
+    expect(screen.getByText('Şu an yok.')).toBeInTheDocument();
+
+    const ekle = screen.getByLabelText('Alan ekle');
+    expect([...ekle.options].map((o) => o.value)).not.toContain('mobil');
+    await userEvent.selectOptions(ekle, 'siber_guvenlik');
+    expect(screen.getByRole('button', { name: 'Siber Güvenlik kaldır' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Alan ekle')).toHaveValue('');
+  });
+
+  it("beceriler etiket olarak görünür; × ile silinir, 32'lik listeden eklenir", async () => {
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    await userEvent.selectOptions(screen.getByLabelText('Beceri ekle'), 'Python');
+    expect(screen.getByRole('button', { name: 'Python kaldır' })).toBeInTheDocument();
+    expect([...screen.getByLabelText('Beceri ekle').options].map((o) => o.value)).not.toContain('Python');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Flutter kaldır' }));
+    expect(screen.queryByRole('button', { name: 'Flutter kaldır' })).not.toBeInTheDocument();
+  });
+
+  it('"Onayla ve devam" düzeltilmiş profili PUT ile gönderir ve önerilere geçer', async () => {
+    vi.mocked(api.profilOnayla).mockImplementation(async (id, govde) => ({ id, ...govde, onaylandi: true }));
+    vi.mocked(api.onerileriUret).mockResolvedValue(ONERILER);
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    await userEvent.click(screen.getByRole('button', { name: 'Web Geliştirme 4 puan' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Oyun Geliştirme kaldır' }));
+    await userEvent.selectOptions(screen.getByLabelText('Beceri ekle'), 'Python');
+    await userEvent.click(screen.getByRole('button', { name: 'Onayla ve devam' }));
+
+    expect(await screen.findByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
+    const [id, govde] = api.profilOnayla.mock.calls[0];
+    expect(id).toBe(5);
+    expect(govde.alanlar).toHaveLength(5);
+    expect(govde.alanlar).toContainEqual({ kod: 'web', ad: 'Web Geliştirme', puan: 4 });
+    expect(govde.istemedikleri).toEqual([]);
+    expect(govde.beceriler).toEqual(['Flutter', 'Python']);
+    expect(akisOku('profil').onaylandi).toBe(true);
+    // Profil yeni onaylandı: eski liste geçersiz, doğrudan üretilir.
+    expect(api.onerileriUret).toHaveBeenCalledWith('5');
+    expect(api.onerileriGetir).not.toHaveBeenCalled();
+  });
+
+  it('beklerken düğme kilitlenir, iki kez gönderilemez', async () => {
+    vi.mocked(api.profilOnayla).mockReturnValue(new Promise(() => {}));
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    await userEvent.click(screen.getByRole('button', { name: 'Onayla ve devam' }));
+    const dugme = screen.getByRole('button', { name: 'Kaydediliyor…' });
+    expect(dugme).toBeDisabled();
+    await userEvent.click(dugme);
+    expect(api.profilOnayla).toHaveBeenCalledTimes(1);
+  });
+
+  it('aynı alan hem ilgi hem istenmeyense sunucunun Türkçe mesajını gösterir', async () => {
+    vi.mocked(api.profilOnayla).mockRejectedValueOnce(
+      new SunucuHatasi('Bir alan hem ilgi alanlarında hem istemediklerinde olamaz.', 422),
+    );
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    await userEvent.click(screen.getByRole('button', { name: 'Onayla ve devam' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Bir alan hem ilgi alanlarında hem istemediklerinde olamaz.');
+    expect(screen.getByRole('button', { name: 'Onayla ve devam' })).toBeEnabled();
+  });
+
+  it('oturum düştüyse (401) girişe gönderir', async () => {
+    vi.mocked(api.profilOnayla).mockImplementation(async () => {
+      api.cikisYap();
+      throw new SunucuHatasi('Oturumun süresi doldu, tekrar giriş yap.', 401);
+    });
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    await userEvent.click(screen.getByRole('button', { name: 'Onayla ve devam' }));
+    expect(await screen.findByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument();
+  });
+
+  it('geri düğmesi "Seni tanıyalım"a döner ve sayfa en üstten başlar', async () => {
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    vi.mocked(window.scrollTo).mockClear();
+    await userEvent.click(screen.getByRole('button', { name: '← Geri' }));
+    expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+  });
+});
+
+// --- Öneriler ----------------------------------------------------------------
+
+// GET/POST /oneriler cevabındaki bir proje (docs/anlasma.md, 4. bölüm)
+function proje(no, ekler = {}) {
+  return {
+    id: 40 + no,
+    kaynak: 'havuz',
+    havuz_proje_id: no,
+    baslik: `Proje ${no}`,
+    alan: 'mobil',
+    alan_adi: 'Mobil Uygulama',
+    alan2: null,
+    beceriler: ['Flutter'],
+    zorluk: 2,
+    hafta: 8,
+    ne: `Proje ${no} ne yapar`,
+    kim: 'Öğrenciler',
+    cikti: 'Bir uygulama',
+    adimlar: ['Veriyi topla', 'Modeli eğit', 'Uygulamayı yap', 'Kampüste dene'],
+    kolay: 'Sadece ortalama',
+    efsane: 'Anlık bildirim',
+    puan_uyum: 90,
+    puan_yapilabilirlik: 80,
+    puan_ozgunluk: 70,
+    puan_toplam: 100 - no,
+    benzer_baslik: null,
+    benzer_link: null,
+    benzerlik: null,
+    duelloda: no <= 8,
+    surpriz: false,
+    ...ekler,
+  };
+}
+
+// Sunucu sıralı gönderir; sıralamayı da denemek için karışık verilir. 2. proje Gemini'den.
+const ONERILER = [3, 1, 2, 4, 5, 6, 7, 8, 10, 9].map((no) =>
+  proje(
+    no,
+    no === 2
+      ? { kaynak: 'gemini', havuz_proje_id: null, baslik: 'Kantin Sırası Tahmini', alan: 'yapay_zeka', alan_adi: 'Yapay Zekâ ve Makine Öğrenmesi', zorluk: 3 }
+      : {},
+  ),
+);
+
+function oneriKartlari() {
+  return [...document.querySelectorAll('ol.oneriler > li')];
+}
+
+// Düello ekranı henüz yok; "Düelloyu başlat"ın hangi adrese geçtiğini görmek için yerine bir başlık konur.
+function DuelloYeri() {
+  const { profilId } = useParams();
+  return <h1>Düello {profilId}</h1>;
+}
+
+function onerileriAc(state) {
+  return render(
+    <MemoryRouter initialEntries={[{ pathname: '/oneriler/5', state }]}>
+      <Routes>
+        <Route path="/oneriler/:profilId" element={<Oneriler />} />
+        <Route path="/duello/:profilId" element={<DuelloYeri />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe('Öneriler', () => {
+  beforeEach(() => {
+    api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' });
+    akisYaz('profil', { ...PROFIL, onaylandi: true });
+  });
+
+  it('profil yoksa "Seni tanıyalım"a döner, sunucuya gitmez', async () => {
+    sessionStorage.clear();
+    ac('/oneriler/5');
+    expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
+    expect(api.onerileriGetir).not.toHaveBeenCalled();
+    expect(api.onerileriUret).not.toHaveBeenCalled();
+  });
+
+  it('açılışta kayıtlı liste istenir (GET); varsa yeniden üretilmez', async () => {
+    vi.mocked(api.onerileriGetir).mockResolvedValue(ONERILER);
+    ac('/oneriler/5');
+    expect(await screen.findByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
+    expect(api.onerileriGetir).toHaveBeenCalledWith('5');
+    expect(api.onerileriUret).not.toHaveBeenCalled();
+  });
+
+  it('kayıtlı liste boşsa üretilir (POST); beklerken ilerleme gösterir', async () => {
+    let bitir;
+    vi.mocked(api.onerileriGetir).mockResolvedValue([]);
+    vi.mocked(api.onerileriUret).mockImplementation(() => new Promise((r) => (bitir = r)));
+    ac('/oneriler/5');
+
+    expect(screen.getByRole('heading', { name: 'Projelerin hazırlanıyor' })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    await waitFor(() => expect(api.onerileriUret).toHaveBeenCalledWith('5'));
+    bitir(ONERILER);
+
+    expect(await screen.findByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
+    const basliklar = oneriKartlari().map((k) => k.querySelector('.oneri-baslik').textContent);
+    expect(basliklar).toEqual(['Proje 1', 'Kantin Sırası Tahmini', 'Proje 3', 'Proje 4', 'Proje 5', 'Proje 6', 'Proje 7', 'Proje 8', 'Proje 9', 'Proje 10']);
+    expect(api.onerileriUret).toHaveBeenCalledTimes(1);
+    expect(akisOku('oneriler')).toEqual({ profilId: '5', liste: ONERILER });
+  });
+
+  it('kartta alan, zorluk, hafta, puan; Gemini projesinde "✨ Sana özel" rozeti var', async () => {
+    vi.mocked(api.onerileriGetir).mockResolvedValue(ONERILER);
+    ac('/oneriler/5');
+    await screen.findByRole('heading', { name: 'Sana uygun 10 proje' });
+    const [ilk, ikinci] = oneriKartlari();
+    expect(ilk).toHaveTextContent('Proje 1');
+    expect(ilk).toHaveTextContent('Mobil Uygulama');
+    expect(ilk).toHaveTextContent('Orta · 8 hafta');
+    expect(ilk).toHaveTextContent('Düelloda');
+    expect(ilk).not.toHaveTextContent('Sana özel');
+    expect(within(ilk).getByRole('img', { name: 'Puan 99' })).toBeInTheDocument();
+    expect(ikinci).toHaveTextContent('✨ Sana özel');
+    expect(ikinci).toHaveTextContent('Zor · 8 hafta');
+    expect(oneriKartlari()[9]).toHaveTextContent('Elendi');
+  });
+
+  it('karta dokununca ayrıntı açılır, tekrar dokununca kapanır', async () => {
+    vi.mocked(api.onerileriGetir).mockResolvedValue(ONERILER);
+    ac('/oneriler/5');
+    await screen.findByRole('heading', { name: 'Sana uygun 10 proje' });
+    const dugme = within(oneriKartlari()[0]).getAllByRole('button')[0];
+    expect(dugme).toHaveAttribute('aria-expanded', 'false');
+
+    await userEvent.click(dugme);
+    expect(dugme).toHaveAttribute('aria-expanded', 'true');
+    const kart = oneriKartlari()[0];
+    for (const yazi of ['Proje 1 ne yapar', 'Öğrenciler', 'Bir uygulama', 'Kampüste dene', 'Sadece ortalama', 'Anlık bildirim', 'Sana uyumu', 'Yapılabilirliği', 'Özgünlüğü']) {
+      expect(kart).toHaveTextContent(yazi);
+    }
+
+    await userEvent.click(dugme);
+    expect(kart).not.toHaveTextContent('Proje 1 ne yapar');
+  });
+
+  it('sunucunun boş gönderdiği bilgiler ayrıntıda gösterilmez', async () => {
+    const eksik = proje(1, { kim: null, cikti: null, kolay: null, efsane: null, puan_uyum: null, puan_yapilabilirlik: null, puan_ozgunluk: null, puan_toplam: null });
+    vi.mocked(api.onerileriGetir).mockResolvedValue([eksik]);
+    ac('/oneriler/5');
+    await screen.findByRole('heading', { name: 'Sana uygun 1 proje' });
+    expect(screen.getByRole('img', { name: 'Puan 0' })).toBeInTheDocument();
+    await userEvent.click(within(oneriKartlari()[0]).getAllByRole('button')[0]);
+    const kart = oneriKartlari()[0];
+    expect(kart).toHaveTextContent('Proje 1 ne yapar');
+    for (const yazi of ['Kimin işine yarar', 'Sonunda ne çıkar', 'Kolay mod', 'Efsane mod', 'Puan']) {
+      expect(within(kart).queryByRole('heading', { name: yazi })).not.toBeInTheDocument();
+    }
+  });
+
+  it('tarayıcıda saklı liste varsa sunucuya hiç gitmez', async () => {
+    akisYaz('oneriler', { profilId: '5', liste: ONERILER });
+    ac('/oneriler/5');
+    expect(screen.getByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
+    expect(api.onerileriGetir).not.toHaveBeenCalled();
+    expect(api.onerileriUret).not.toHaveBeenCalled();
+  });
+
+  it('"Düelloyu başlat" düello ekranına geçer', async () => {
+    akisYaz('oneriler', { profilId: '5', liste: ONERILER });
+    onerileriAc();
+    await userEvent.click(screen.getByRole('button', { name: 'Düelloyu başlat' }));
+    expect(screen.getByRole('heading', { name: 'Düello 5' })).toBeInTheDocument();
+  });
+
+  it('hata olursa mesaj gösterir; "Tekrar dene" yeniden ister', async () => {
+    vi.mocked(api.onerileriUret)
+      .mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0))
+      .mockResolvedValueOnce(ONERILER);
+    onerileriAc({ yeniUret: true });
+    expect(await screen.findByRole('heading', { name: 'Projeler getirilemedi' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Sunucuya ulaşılamıyor.');
+    await userEvent.click(screen.getByRole('button', { name: 'Tekrar dene' }));
+    expect(await screen.findByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
+  });
+
+  it('hata ekranındaki "Profile dön" profil ekranını açar', async () => {
+    vi.mocked(api.onerileriUret).mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0));
+    ac({ pathname: '/oneriler/5', state: { yeniUret: true } });
+    await userEvent.click(await screen.findByRole('button', { name: 'Profile dön' }));
+    expect(await screen.findByRole('heading', { name: 'Doğru anladık mı?' })).toBeInTheDocument();
+  });
+
+  it('oturum düştüyse (401) girişe gönderir', async () => {
+    vi.mocked(api.onerileriGetir).mockImplementation(async () => {
+      api.cikisYap();
+      throw new SunucuHatasi('Oturumun süresi doldu, tekrar giriş yap.', 401);
+    });
+    ac('/oneriler/5');
+    expect(await screen.findByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument();
   });
 });
