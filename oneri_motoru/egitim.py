@@ -16,8 +16,9 @@ import argparse
 import random
 from pathlib import Path
 
-from .etiketler import ALAN_KODLARI, beceri_bul
+from .etiketler import ALAN_KODLARI
 from .model import MODEL_DOSYASI, OLUMLU, OLUMSUZ, ProfilModeli, _sinif
+from .profil import bilinen_beceriler
 from .veri import METINLER_DOSYASI, VERI_KLASORU, metinleri_oku
 
 FORM_EGITIM_DOSYASI = VERI_KLASORU / "form_egitim.csv"
@@ -87,7 +88,7 @@ def olcumler(gercekler, tahminler, olasiliklar):
 def beceri_olcumu(veri):
     dogru = tahmin_sayisi = gercek_sayisi = 0
     for v in veri:
-        bulunan, gercek = set(beceri_bul(v["metin"])), set(v["beceriler"])
+        bulunan, gercek = set(bilinen_beceriler(v["metin"])), set(v["beceriler"])
         dogru += len(bulunan & gercek)
         tahmin_sayisi += len(bulunan)
         gercek_sayisi += len(gercek)

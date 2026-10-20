@@ -3,6 +3,7 @@ import unittest
 
 from oneri_motoru.etiketler import ALAN_KODLARI, beceri_bul, sade, turkce_kucuk
 from oneri_motoru.model import ProfilModeli, _on_isle
+from oneri_motoru.profil import bilinen_beceriler
 from oneri_motoru.veri import metinleri_oku, projeleri_oku
 
 
@@ -24,6 +25,16 @@ class BeceriTesti(unittest.TestCase):
         self.assertEqual(beceri_bul("ag temelleri biliyorum"), ["Ağ Temelleri"])
         self.assertEqual(beceri_bul("AĞ TEMELLERİ biliyorum"), ["Ağ Temelleri"])
         self.assertEqual(sade("Ağ Güvenliği ÇIKIŞ"), "ag guvenligi cikis")
+
+
+class BilinenBeceriTesti(unittest.TestCase):
+    def test_bilmedigi_beceri_sayilmaz(self):
+        self.assertEqual(bilinen_beceriler("C# ile çok çalıştım. Ama Python bilmiyorum."), ["C#"])
+        self.assertEqual(bilinen_beceriler("javayı hiç bilmiyorum ama python biliyorum"), ["Python"])
+        self.assertEqual(bilinen_beceriler("docker yok, linux biliyorum"), ["Linux"])
+
+    def test_uzaktaki_olumsuzluk_beceriyi_silmez(self):
+        self.assertEqual(bilinen_beceriler("elimde bi tek python var başka da pek bişey bilmiyorum"), ["Python"])
 
 
 class OlumsuzlukTesti(unittest.TestCase):
