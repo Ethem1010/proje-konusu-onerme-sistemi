@@ -76,7 +76,8 @@ def gemini_sor(test, yeniden=False, dusunme=None):
         print(f"  Gemini'ye soruluyor: {i}/{len(test)}", end="\r")
         bas = time.perf_counter()
         try:
-            cevap = sor(_komut(t["metin"]), sistem=SISTEM, sema=SEMA, sicaklik=0, dusunme=dusunme)
+            cevap = sor(_komut(t["metin"]), sistem=SISTEM, sema=SEMA, sicaklik=0, dusunme=dusunme,
+                        zaman_asimi=180)  # ölçümde Gemini'nin gerçek süresi görülsün, erken kesilmesin
         except YapayZekaHatasi as hata:
             print(f"\n  {i}. metinde Gemini cevap vermedi: {str(hata)[:150]}")
             cevaplar.append(None)  # kaydedilmez, komut tekrar çalışınca yeniden sorulur

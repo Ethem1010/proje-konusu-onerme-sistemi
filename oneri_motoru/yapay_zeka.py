@@ -8,11 +8,14 @@ Ayarlar ana klasördeki .env dosyasında:
     GEMINI_MODEL=gemini-3.8-flash (isteğe bağlı, yazılmazsa bu kullanılır)
     GEMINI_DUSUNME=low            (isteğe bağlı: minimal, low, medium, high. Gemini cevaplamadan önce
                                    ne kadar "düşünsün"? Az düşünce daha hızlı cevap verir.)
+    GEMINI_ZAMAN_ASIMI=30         (isteğe bağlı: bir isteğe en fazla kaç saniye beklensin. Google takılırsa
+                                   sunucu sonsuza kadar beklemesin, süre dolunca sistem yedeğe geçsin.)
 """
 import json
 import os
 import time
 
+import httpx
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors, types
@@ -25,6 +28,10 @@ MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 # Bu durum kodlarında sorun geçicidir (yoğunluk, kota, sunucu hatası); bir süre sonra tekrar denenebilir.
 GECICI_HATALAR = {429, 500, 502, 503, 504}
 BEKLEME_SANIYE = 3
+
+# Bir isteğe en fazla bu kadar beklenir. Süre dolarsa tekrar denenmez (Google zaten yavaş, ikinci deneme
+# öğrenciyi bir o kadar daha bekletir); YapayZekaHatasi fırlar ve sistem havuz / yedek haritaya geçer.
+ZAMAN_ASIMI_SANIYE = float(os.getenv("GEMINI_ZAMAN_ASIMI", "30"))
 
 
 class YapayZekaHatasi(Exception):
@@ -54,7 +61,7 @@ def _dusunme_ayari(dusunme):
         return None
 
 
-def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2, dusunme=None):
+def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2, dusunme=None, zaman_asimi=None):
     """Yapay zekâya bir istek gönderir, cevabı döner.
 
     komut:    yapay zekâya gönderilecek metin
@@ -72,6 +79,7 @@ def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2, dusunme
         response_mime_type="application/json" if sema else None,
         response_json_schema=sema,
         thinking_config=_dusunme_ayari(dusunme),  # dusunme: "minimal", "low", "medium", "high" ya da None
+        http_options=types.HttpOptions(timeout=int((zaman_asimi or ZAMAN_ASIMI_SANIYE) * 1000)),  # milisaniye
     )
 
     son_hata = None
@@ -88,6 +96,9 @@ def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2, dusunme
             son_hata = hata  # cevap kalıba uymadı, bir kez daha iste
         except YapayZekaHatasi:
             raise  # API anahtarı yok: tekrar denemenin faydası yok
+        except httpx.TimeoutException as hata:
+            son_hata = TimeoutError(f"{zaman_asimi or ZAMAN_ASIMI_SANIYE:g} saniyede cevap gelmedi ({type(hata).__name__})")
+            break  # zaman aşımı: tekrar denemek öğrenciyi bir o kadar daha bekletir
         except Exception as hata:
             # İnternet koptu, bağlantı zaman aşımına uğradı gibi ağ sorunları (httpx hataları).
             # Bunlar da geçicidir, bir kez daha denenir.
