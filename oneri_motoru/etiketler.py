@@ -67,6 +67,29 @@ BECERILER = {
 }
 BECERI_ADLARI = list(BECERILER)
 
+# Alanı anlatan kelimelerin sade yazımı (etiketler.sade). Olumsuz bir cümlede geçerlerse öğrenci o alanı
+# istemiyor sayılır: "web işlerinden hiç hoşlanmam" -> web. Kelimenin başı yeter: "oyun" -> "oyunlardan".
+ALAN_KELIMELERI = {
+    "web": [r"web", r"site", r"front ?end"],
+    "mobil": [r"mobil", r"telefon uygulama", r"android", r"ios\b"],
+    "yapay_zeka": [r"yapay zeka", r"makine ogren", r"derin ogren", r"model egit"],
+    "goruntu_isleme": [r"goruntu", r"kamera", r"yuz tanima"],
+    "dogal_dil": [r"dogal dil", r"chatbot", r"metin analiz", r"nlp\b"],
+    "veri_bilimi": [r"veri bilim", r"veri analiz", r"istatistik", r"grafik"],
+    "siber_guvenlik": [r"siber", r"guvenlik", r"hack", r"pentest", r"zafiyet", r"sifreleme"],
+    "gomulu_iot": [r"gomulu", r"arduino", r"sensor", r"donanim", r"devre", r"lehim", r"robotik", r"mikrodenetleyici", r"iot\b"],
+    "oyun": [r"oyun", r"unity"],
+    "bulut_devops": [r"bulut", r"devops", r"docker", r"kubernetes", r"sunucu", r"cloud", r"deploy"],
+    "veritabani": [r"veri ?taban", r"sql", r"database"],
+    "ag_dagitik": [r"ag(lar\w*|dan|da|a|i|in|la)?\b", r"socket", r"soket", r"network", r"protokol", r"tcp"],
+}
+_ALAN_DESENLERI = {kod: re.compile(r"\b(?:" + "|".join(kelimeler) + ")") for kod, kelimeler in ALAN_KELIMELERI.items()}
+
+
+def alan_kelimeleri_bul(metin):
+    """Sade yazılmış metinde adı geçen alanların kodları."""
+    return [kod for kod, desen in _ALAN_DESENLERI.items() if desen.search(metin)]
+
 _HARF = "a-z0-9"
 
 # Öğrenciler çoğu zaman telefonda Türkçe harf kullanmadan yazıyor: "ağ" yerine "ag", "sıkıldım" yerine "sikildim".
