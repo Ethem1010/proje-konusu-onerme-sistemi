@@ -2,19 +2,26 @@
 
     python -m oneri_motoru.egitim
 
-1. veri/metinler.csv dosyasını okur.
+1. Eğitim verisini okur: veri/metinler.csv (ekibin metinleri) ve varsa veri/form_egitim.csv
+   (formdan gelen cevaplar, form_cevir.py üretir).
 2. Çapraz doğrulama yapar: veriyi 5 parçaya böler, her seferinde 4 parçayla eğitip
    modelin hiç görmediği 1 parçada dener. Böylece modelin ezber değil gerçekten
    öğrenip öğrenmediği ölçülür.
-3. Beceri sözlüğünün (etiketler.py) ne kadar doğru bulduğunu da ölçer.
-4. Modeli bütün veriyle son kez eğitip oneri_motoru/model/ klasörüne kaydeder.
+3. Varsa test setinde (veri/test_seti.csv) dener. Test setindeki gerçek öğrenci cevapları
+   eğitimde hiç kullanılmaz, asıl başarı ölçüsü budur.
+4. Beceri sözlüğünün (etiketler.py) ne kadar doğru bulduğunu da ölçer.
+5. Modeli bütün eğitim verisiyle son kez eğitip oneri_motoru/model/ klasörüne kaydeder.
 """
 import argparse
 import random
+from pathlib import Path
 
 from .etiketler import ALAN_KODLARI, beceri_bul
 from .model import MODEL_DOSYASI, OLUMLU, OLUMSUZ, ProfilModeli, _sinif
-from .veri import METINLER_DOSYASI, metinleri_oku
+from .veri import METINLER_DOSYASI, VERI_KLASORU, metinleri_oku
+
+FORM_EGITIM_DOSYASI = VERI_KLASORU / "form_egitim.csv"
+TEST_DOSYASI = VERI_KLASORU / "test_seti.csv"
 
 AZ_VERI = 50
 
@@ -41,6 +48,13 @@ def capraz_dogrulama(veri, parca_sayisi=5, tohum=42):
             tahminler[i] = t
             olasiliklar[i] = p
     return gercekler, tahminler, olasiliklar
+
+
+def test_et(model, test):
+    """Eğitilmiş modelin test setindeki tahminleri (capraz_dogrulama ile aynı kalıpta)."""
+    metinler = [t["metin"] for t in test]
+    gercekler = [{k: _sinif(v) for k, v in t["etiketler"].items()} for t in test]
+    return gercekler, model.tahmin(metinler), model.olasiliklar(metinler)
 
 
 def olcumler(gercekler, tahminler, olasiliklar):
@@ -84,27 +98,48 @@ def _yuzde(x):
     return f"%{100 * x:5.1f}"
 
 
-def rapor_yaz(veri, sonuc, beceri):
+def taban_isabet(egitim, test):
+    """Karşılaştırma için "tembel tahminci": metni hiç okumadan herkese eğitim verisinde en çok
+    sevilen alanı söyler. Model bundan iyi değilse gerçekten bir şey öğrenmemiş demektir."""
+    sayilar = {k: sum(1 for v in egitim if v["etiketler"][k] > 0) for k in ALAN_KODLARI}
+    en_sevilen = max(sayilar, key=sayilar.get)
+    ilgili = [t for t in test if any(v > 0 for v in t["etiketler"].values())]
+    if not ilgili:
+        return en_sevilen, 0.0
+    return en_sevilen, sum(t["etiketler"][en_sevilen] > 0 for t in ilgili) / len(ilgili)
+
+
+def rapor_yaz(veri, sonuc, beceri=None, baslik="Çapraz doğrulama (model bu metinleri eğitimde görmedi)", taban=None):
     print(f"\nVeri: {len(veri)} öğrenci metni")
-    print("\n=== Çapraz doğrulama (model bu metinleri eğitimde görmedi) ===")
+    print(f"\n=== {baslik} ===")
     print(f"İlgi alanı bulma      kesinlik {_yuzde(sonuc['ilgi'][0])}  duyarlılık {_yuzde(sonuc['ilgi'][1])}  F1 {_yuzde(sonuc['ilgi'][2])}")
     print(f"İstemediğini bulma    kesinlik {_yuzde(sonuc['istememe'][0])}  duyarlılık {_yuzde(sonuc['istememe'][1])}  F1 {_yuzde(sonuc['istememe'][2])}")
     print(f"İlk tahmin isabeti    {_yuzde(sonuc['ilk_tahmin_isabeti'])}  (en yüksek puanlı alan gerçekten ilgilendiği alan mı)")
+    if taban:
+        print(f"  karşılaştırma:      {_yuzde(taban[1])}  (metni okumadan herkese '{taban[0]}' deseydik)")
     print("\nAlan bazında ilgi F1 (örnek sayısı):")
     for kod in ALAN_KODLARI:
         _, _, f1, n = sonuc["alanlar"][kod]["ilgi"]
         print(f"  {kod:<16} {_yuzde(f1)}  ({n})")
-    print("\n=== Beceri sözlüğü ===")
-    print(f"kesinlik {_yuzde(beceri[0])}  duyarlılık {_yuzde(beceri[1])}  F1 {_yuzde(beceri[2])}")
+    if beceri:
+        print("\n=== Beceri sözlüğü ===")
+        print(f"kesinlik {_yuzde(beceri[0])}  duyarlılık {_yuzde(beceri[1])}  F1 {_yuzde(beceri[2])}")
 
 
 def main():
     ayar = argparse.ArgumentParser(description="Profil modelini eğitir ve kaydeder.")
-    ayar.add_argument("--veri", default=METINLER_DOSYASI, help="öğrenci metinleri CSV dosyası")
+    ayar.add_argument("--veri", nargs="+", type=Path,
+                      help="eğitim CSV dosyaları (verilmezse metinler.csv ve varsa form_egitim.csv)")
+    ayar.add_argument("--test", type=Path, default=TEST_DOSYASI, help="test seti CSV dosyası (varsa)")
     ayar.add_argument("--kaydetme", action="store_true", help="sadece ölç, modeli kaydetme")
     secenek = ayar.parse_args()
 
-    veri = metinleri_oku(secenek.veri)
+    dosyalar = secenek.veri or [d for d in (METINLER_DOSYASI, FORM_EGITIM_DOSYASI) if d.exists()]
+    veri = []
+    for dosya in dosyalar:
+        okunan = metinleri_oku(dosya)
+        print(f"{dosya.name}: {len(okunan)} metin")
+        veri += okunan
     if not veri:
         print("Hiç metin bulunamadı.")
         return
@@ -117,8 +152,18 @@ def main():
     else:
         print("Çapraz doğrulama için en az 10 metin gerekiyor, ölçüm atlandı.")
 
+    model = ProfilModeli().egit([v["metin"] for v in veri], [v["etiketler"] for v in veri])
+
+    if secenek.test.exists():
+        test = metinleri_oku(secenek.test)
+        # Beceri ölçülmez: formda beceriler ayrı bir listeden işaretleniyor, metinde geçmeyebilir
+        rapor_yaz(test, olcumler(*test_et(model, test)), taban=taban_isabet(veri, test),
+                  baslik=f"Test seti: {secenek.test.name} (gerçek öğrenciler, eğitimde hiç kullanılmadı)")
+    else:
+        print(f"\nTest seti yok ({secenek.test.name}), test ölçümü atlandı.")
+
     if not secenek.kaydetme:
-        ProfilModeli().egit([v["metin"] for v in veri], [v["etiketler"] for v in veri]).kaydet()
+        model.kaydet()
         print(f"\nModel kaydedildi: {MODEL_DOSYASI}")
 
 
