@@ -24,6 +24,6 @@ Arayüz Seyithan'ın sunucusuna `http://127.0.0.1:8000` adresinden bağlanır (`
 - `src/tema.css`: renkler (açık ve koyu tema), yazı tipleri, form ve yerleşim
 - `src/tema.js`: açık/koyu tema seçimi (tarayıcıda saklanır)
 - `src/bilesenler/`: Dugme, Etiket, PuanHalkasi, DonenKart, GeriDugmesi, AdimSeridi, UstCubuk,
-  Logo, GirisCercevesi, TemaDugmesi, ProjeAyrintisi
+  Logo, GirisCercevesi, TemaDugmesi, ProjeAyrintisi, ProjeKarti
 - `src/sayfalar/`: Giris, Kayit, Anlat ("Seni tanıyalım" ve üç soru), Profil (profil onayı),
-  Oneriler (10 proje), Duello, Bekleme
+  Oneriler (10 proje, sürpriz proje), Duello, Sonuc (zorluk seçimi), Harita (görev haritası), Bekleme

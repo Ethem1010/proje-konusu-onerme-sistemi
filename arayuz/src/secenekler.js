@@ -23,6 +23,13 @@ export const PUAN_EN_COK = 5;
 // Projenin zorluğu: 1 kolay, 3 zor (docs/anlasma.md, 4. bölüm).
 export const ZORLUKLAR = { 1: 'Kolay', 2: 'Orta', 3: 'Zor' };
 
+// Seçilen projenin hangi zorlukta yapılacağı (POST /secim, zorluk_modu). Sunucunun varsayılanı orta.
+export const ZORLUK_MODLARI = [
+  { kod: 'kolay', ad: 'Kolay' },
+  { kod: 'orta', ad: 'Orta' },
+  { kod: 'efsane', ad: 'Efsane' },
+];
+
 // Profil ekranında eklenebilen beceriler (ortak veri tablosunun "Etiketler" sekmesi).
 export const BECERILER = [
   'Python', 'Java', 'C', 'C++', 'C#', 'JavaScript', 'TypeScript', 'HTML/CSS', 'React', 'Node.js',
