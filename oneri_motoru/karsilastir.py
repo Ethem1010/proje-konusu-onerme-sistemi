@@ -11,8 +11,8 @@ ikisinin cevabı öğrencinin formda işaretledikleriyle karşılaştırılır.
   Gemini'ye yeniden sorulmaz (günlük kota boşa harcanmaz). Yeniden sormak için: --yeniden
 - Bizim model önce eğitilmiş olmalı: python -m oneri_motoru.egitim
 - Gemini'nin düşünme seviyesi de denenebilir (hız / doğruluk karşılaştırması):
-      python -m oneri_motoru.karsilastir --dusunme minimal
-  Her seviyenin cevapları ayrı dosyaya kaydedilir (veri/test_gemini_minimal.csv gibi).
+      python -m oneri_motoru.karsilastir --dusunme low
+  Her seviyenin cevapları ayrı dosyaya kaydedilir (veri/test_gemini_low.csv gibi).
 """
 import argparse
 import csv
@@ -24,6 +24,8 @@ from .model import OLUMLU, OLUMSUZ, YOK, ProfilModeli
 from .veri import METINLER_DOSYASI, VERI_KLASORU, metinleri_oku
 
 GEMINI_CEVAPLARI = VERI_KLASORU / "test_gemini.csv"  # .gitignore'da (test*)
+# Ücretsiz Gemini anahtarı dakikada 5 istek kabul ediyor; arka arkaya sorunca 429 "kota doldu" hatası gelir.
+ISTEK_ARASI_SANIYE = 13
 
 SEMA = {
     "type": "object",
@@ -60,18 +62,25 @@ def gemini_sor(test, yeniden=False, dusunme=None):
 
     dosya = _cevap_dosyasi(dusunme)
     kayitli = {} if yeniden else _kayitlilari_oku(dosya)
-    cevaplar = []
+    sorulacak = sum(1 for t in test if t["metin"] not in kayitli)
+    if sorulacak:
+        print(f"  {sorulacak} metin sorulacak. Kota dakikada 5 istek olduğu için her istek arası "
+              f"{ISTEK_ARASI_SANIYE} sn bekleniyor (yaklaşık {sorulacak * ISTEK_ARASI_SANIYE // 60 + 1} dakika).")
+    cevaplar, son_istek = [], 0.0
     for i, t in enumerate(test, start=1):
         if t["metin"] in kayitli:
             cevaplar.append(kayitli[t["metin"]])
             continue
+        time.sleep(max(0.0, son_istek + ISTEK_ARASI_SANIYE - time.monotonic()))
+        son_istek = time.monotonic()
         print(f"  Gemini'ye soruluyor: {i}/{len(test)}", end="\r")
         bas = time.perf_counter()
         try:
             cevap = sor(_komut(t["metin"]), sistem=SISTEM, sema=SEMA, sicaklik=0, dusunme=dusunme)
         except YapayZekaHatasi as hata:
-            print(f"\n  {i}. metinde Gemini cevap vermedi ({hata}), bu metin 'hiçbir alan' sayıldı.")
-            cevap = {"alanlar": {}, "en_ilgili": ""}
+            print(f"\n  {i}. metinde Gemini cevap vermedi: {str(hata)[:150]}")
+            cevaplar.append(None)  # kaydedilmez, komut tekrar çalışınca yeniden sorulur
+            continue
         cevap["sure"] = round(time.perf_counter() - bas, 2)
         cevaplar.append(cevap)
         kayitli[t["metin"]] = cevap
@@ -91,6 +100,7 @@ def _kayitlilari_oku(dosya=GEMINI_CEVAPLARI):
                 "sure": float(s["sure"] or 0),
             }
             for s in csv.DictReader(f)
+            if s.get("en_ilgili")  # eski sürümün kaydettiği boş (hatalı) cevaplar yeniden sorulsun
         }
 
 
@@ -142,8 +152,8 @@ def _satir(ad, bizim, gemini, yuzde=True):
 def main():
     ayar = argparse.ArgumentParser(description="Bizim model ile Gemini'yi test setinde karşılaştırır.")
     ayar.add_argument("--yeniden", action="store_true", help="kayıtlı cevapları kullanma, Gemini'ye yeniden sor")
-    ayar.add_argument("--dusunme", choices=["minimal", "low", "medium", "high"],
-                      help="Gemini'nin düşünme seviyesi (verilmezse modelin varsayılanı)")
+    ayar.add_argument("--dusunme", choices=["low", "medium", "high"],
+                      help="Gemini'nin düşünme seviyesi (verilmezse modelin varsayılanı; 'minimal'i bu model desteklemiyor)")
     secenek = ayar.parse_args()
 
     if not TEST_DOSYASI.exists():
@@ -158,6 +168,11 @@ def main():
 
     print(f"Gemini'ye {len(test)} metin soruluyor (kayıtlı olanlar tekrar sorulmaz)...")
     cevaplar = gemini_sor(test, secenek.yeniden, secenek.dusunme)
+    eksik = sum(c is None for c in cevaplar)
+    if eksik:
+        print(f"\nGemini {len(test)} metnin {eksik} tanesine cevap vermedi, karşılaştırma eksik olur.")
+        print("Gelen cevaplar kaydedildi. Bir dakika bekleyip aynı komutu tekrar çalıştır, sadece kalanları sorar.")
+        return
     gemini = olcumler(*gemini_tahminleri(test, cevaplar))
     gemini_sure = sum(c["sure"] for c in cevaplar) / len(cevaplar)
 
