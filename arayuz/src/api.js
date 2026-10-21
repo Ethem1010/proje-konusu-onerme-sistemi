@@ -125,3 +125,11 @@ export function onerileriGetir(profilId) {
 export function onerileriUret(profilId) {
   return istek(`/oneriler/${profilId}`, { yontem: 'POST', jetonlu: true });
 }
+
+// POST /duello { profil_id, kazanan_proje_id, kaybeden_proje_id, tur } → 201, aynısı + id
+// Adres sunucuda henüz yok; gelene kadar aynı kalıpta sahte cevap döner. Gelince gövde şu olacak:
+//   return istek('/duello', { yontem: 'POST', govde: secim, jetonlu: true });
+let sahteDuelloId = 0;
+export function duelloKaydet(secim) {
+  return Promise.resolve({ id: ++sahteDuelloId, ...secim });
+}

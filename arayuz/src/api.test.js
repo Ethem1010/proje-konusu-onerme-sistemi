@@ -5,6 +5,7 @@ import {
   ben,
   bolumleriGetir,
   cikisYap,
+  duelloKaydet,
   girisYap,
   jetonuAl,
   jetonuKaydet,
@@ -157,5 +158,15 @@ describe('api', () => {
     expect(fetchSahte.mock.calls[0][1].method).toBe('GET');
     expect(fetchSahte.mock.calls[1][0]).toBe(`${SUNUCU_ADRESI}/oneriler/5`);
     expect(fetchSahte.mock.calls[1][1].method).toBe('POST');
+  });
+
+  it('düello seçimi anlaşılan kalıpta cevap verir (adres gelene kadar sahte, sunucuya gitmez)', async () => {
+    const fetchSahte = vi.fn();
+    vi.stubGlobal('fetch', fetchSahte);
+    const secim = { profil_id: 5, kazanan_proje_id: 48, kaybeden_proje_id: 41, tur: 'ceyrek' };
+    const cevap = await duelloKaydet(secim);
+    expect(cevap).toMatchObject(secim);
+    expect(Number.isInteger(cevap.id)).toBe(true);
+    expect(fetchSahte).not.toHaveBeenCalled();
   });
 });
