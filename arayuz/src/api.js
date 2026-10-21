@@ -141,3 +141,29 @@ export function duelloKaydet(secim) {
 export function duellolariGetir(profilId) {
   return istek(`/duello/${profilId}`, { jetonlu: true });
 }
+
+// GET /projeler/{id} → tek proje (öneri listesindeki kalıp). Başkasınınsa 404.
+export function projeGetir(id) {
+  return istek(`/projeler/${id}`, { jetonlu: true });
+}
+
+// GET /surpriz/{profilId} → tek proje, surpriz: true. Profil onaylı değilse 400, uygun proje yoksa 404.
+export function surprizGetir(profilId) {
+  return istek(`/surpriz/${profilId}`, { jetonlu: true });
+}
+
+// POST /secim { proje_id, zorluk_modu } → 201 { secim_id, proje_id, zorluk_modu, adimlar: [12 adım] }.
+// Haritayı Gemini ürettiği için 5-15 saniye sürebilir.
+export function secimYap({ proje_id, zorluk_modu }) {
+  return istek('/secim', { yontem: 'POST', govde: { proje_id, zorluk_modu }, jetonlu: true });
+}
+
+// GET /harita/{secimId} → POST /secim ile aynı kalıp, adımlar sıraya göre
+export function haritaGetir(secimId) {
+  return istek(`/harita/${secimId}`, { jetonlu: true });
+}
+
+// PUT /harita/{secimId} { sira, tamamlandi } → güncel harita
+export function adimIsaretle(secimId, { sira, tamamlandi }) {
+  return istek(`/harita/${secimId}`, { yontem: 'PUT', govde: { sira, tamamlandi }, jetonlu: true });
+}

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { akisOku, akisYaz } from '../akis.js';
-import { onerileriGetir, onerileriUret, oturumDustu } from '../api.js';
+import { onerileriGetir, onerileriUret, oturumDustu, surprizGetir } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
 import Etiket from '../bilesenler/Etiket.jsx';
 import ProjeAyrintisi from '../bilesenler/ProjeAyrintisi.jsx';
+import ProjeKarti from '../bilesenler/ProjeKarti.jsx';
 import PuanHalkasi from '../bilesenler/PuanHalkasi.jsx';
 import UstCubuk from '../bilesenler/UstCubuk.jsx';
 import { alanBul, ZORLUKLAR } from '../secenekler.js';
@@ -69,6 +70,27 @@ export default function Oneriler() {
   const [hata, setHata] = useState('');
   const [deneme, setDeneme] = useState(0);
   const [acikId, setAcikId] = useState(null);
+  const [surpriz, setSurpriz] = useState(null);
+  const [surprizBekliyor, setSurprizBekliyor] = useState(false);
+  const [surprizHatasi, setSurprizHatasi] = useState('');
+  const [surprizIcerik, setSurprizIcerik] = useState(false);
+
+  // GET /surpriz: aynı profil için hep aynı proje döner. Profil onaylı değilse 400, uygun proje yoksa 404.
+  async function surprizGoster() {
+    setSurprizHatasi('');
+    setSurprizBekliyor(true);
+    try {
+      setSurpriz(await surprizGetir(profilId));
+    } catch (hataNesnesi) {
+      if (oturumDustu(hataNesnesi)) {
+        git('/giris', { replace: true, state: { mesaj: hataNesnesi.message } });
+        return;
+      }
+      setSurprizHatasi(hataNesnesi.message);
+    } finally {
+      setSurprizBekliyor(false);
+    }
+  }
 
   // deneme değişince ("Tekrar dene") yeniden yüklenir. Profil başkasınınsa sunucu 404 verir.
   useEffect(() => {
@@ -138,7 +160,33 @@ export default function Oneriler() {
           </ol>
           <div className="row">
             <Dugme onClick={() => git(`/duello/${profilId}`)}>Düelloyu başlat</Dugme>
+            {!surpriz && (
+              <Dugme tur="ghost" onClick={surprizGoster} disabled={surprizBekliyor}>
+                {surprizBekliyor ? 'Bakılıyor…' : '🎁 Sürpriz proje'}
+              </Dugme>
+            )}
           </div>
+          {surprizHatasi && (
+            <p className="err" role="alert">
+              {surprizHatasi}
+            </p>
+          )}
+          {surpriz && (
+            <section className="surpriz" aria-labelledby="surpriz-baslik">
+              <div className="sayfa-baslik">
+                <h2 id="surpriz-baslik">🎁 Sürpriz proje</h2>
+                <p className="muted">İlgi alanlarının dışından, ama istemediğin alanlardan değil. Bunu hiç düşünmemiştin belki.</p>
+              </div>
+              <div className="tek">
+                <ProjeKarti
+                  proje={surpriz}
+                  icerik={surprizIcerik}
+                  onIcerik={() => setSurprizIcerik((a) => !a)}
+                  rozet="Sürpriz"
+                />
+              </div>
+            </section>
+          )}
         </section>
       </main>
     </>
