@@ -21,6 +21,11 @@ vi.mock('../api.js', async (gercek) => ({
   profilGetir: vi.fn(),
   duelloKaydet: vi.fn(),
   duellolariGetir: vi.fn(),
+  surprizGetir: vi.fn(),
+  projeGetir: vi.fn(),
+  secimYap: vi.fn(),
+  haritaGetir: vi.fn(),
+  adimIsaretle: vi.fn(),
 }));
 
 const BOLUMLER = [
@@ -990,5 +995,266 @@ describe('Düello', () => {
     await duelloAc();
     await userEvent.click(screen.getByRole('button', { name: '← Geri' }));
     expect(await screen.findByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
+  });
+});
+
+// --- Sürpriz proje -----------------------------------------------------------
+
+describe('Sürpriz proje', () => {
+  beforeEach(() => {
+    api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' });
+    akisYaz('oneriler', { profilId: '5', liste: ONERILER });
+  });
+
+  it('"🎁 Sürpriz proje" GET /surpriz ile tek projeyi kart olarak gösterir', async () => {
+    vi.mocked(api.surprizGetir).mockResolvedValue(
+      proje(60, { baslik: 'Kampüs Bitki Takibi', alan: 'gomulu_iot', alan_adi: 'Gömülü Sistemler ve IoT', surpriz: true, duelloda: false }),
+    );
+    ac('/oneriler/5');
+    await userEvent.click(screen.getByRole('button', { name: '🎁 Sürpriz proje' }));
+
+    expect(await screen.findByRole('heading', { name: 'Kampüs Bitki Takibi' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '🎁 Sürpriz proje' })).toBeInTheDocument();
+    expect(screen.getByText('Sürpriz')).toBeInTheDocument();
+    expect(api.surprizGetir).toHaveBeenCalledWith('5');
+    expect(screen.queryByRole('button', { name: '🎁 Sürpriz proje' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'İçerik' }));
+    expect(screen.getByText('Proje 60 ne yapar')).toBeInTheDocument();
+  });
+
+  it('profil onaylı değilse (400) ya da uygun proje yoksa (404) sunucunun mesajını gösterir', async () => {
+    vi.mocked(api.surprizGetir)
+      .mockRejectedValueOnce(new SunucuHatasi('Önce profilini onaylaman gerekiyor.', 400))
+      .mockRejectedValueOnce(new SunucuHatasi('Şu an sana uygun bir sürpriz proje bulunamadı.', 404));
+    ac('/oneriler/5');
+    await userEvent.click(screen.getByRole('button', { name: '🎁 Sürpriz proje' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Önce profilini onaylaman gerekiyor.');
+
+    await userEvent.click(screen.getByRole('button', { name: '🎁 Sürpriz proje' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Şu an sana uygun bir sürpriz proje bulunamadı.');
+    expect(screen.getByRole('button', { name: '🎁 Sürpriz proje' })).toBeEnabled();
+  });
+});
+
+// --- Sonuç -------------------------------------------------------------------
+
+// Bitmiş bir düello: şampiyon Kantin Sırası Tahmini (42).
+const TAM_DUELLO = [
+  oynanan(1, 41, 48, 'ceyrek'),
+  oynanan(2, 44, 45, 'ceyrek'),
+  oynanan(3, 42, 47, 'ceyrek'),
+  oynanan(4, 43, 46, 'ceyrek'),
+  oynanan(5, 41, 44, 'yari'),
+  oynanan(6, 42, 43, 'yari'),
+  oynanan(7, 42, 41, 'final'),
+];
+
+function adimListesi(bitenler = []) {
+  // Sunucu sıralı gönderir; sıralamayı da denemek için karışık
+  return [3, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((sira) => ({
+    sira,
+    baslik: `Adım ${sira}`,
+    aciklama: `Adım ${sira} açıklaması`,
+    tamamlandi: bitenler.includes(sira),
+    tamamlanma_tarihi: null,
+  }));
+}
+
+const HARITA = { secim_id: 3, proje_id: 42, zorluk_modu: 'efsane', adimlar: adimListesi([1, 2, 3]) };
+
+describe('Sonuç', () => {
+  beforeEach(() => {
+    api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' });
+    akisYaz('oneriler', { profilId: '5', liste: ONERILER });
+    vi.mocked(api.duellolariGetir).mockResolvedValue(TAM_DUELLO);
+    vi.mocked(api.haritaGetir).mockResolvedValue(HARITA);
+    vi.mocked(api.projeGetir).mockResolvedValue(ONERILER.find((p) => p.id === 42));
+  });
+
+  it('şampiyon ekranındaki "Devam et" sonuç ekranını açar', async () => {
+    ac('/duello/5');
+    await userEvent.click(await screen.findByRole('button', { name: 'Devam et' }));
+    expect(await screen.findByRole('heading', { name: 'Zorluğunu seç' })).toBeInTheDocument();
+  });
+
+  it('şampiyon ve üç zorluk kartı görünür: kolay ve efsane projenin metinleri, orta projenin kendisi', async () => {
+    ac('/sonuc/5');
+    expect(await screen.findByRole('heading', { name: 'Zorluğunu seç' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Kantin Sırası Tahmini' })).toBeInTheDocument();
+    expect(screen.getByText('Şampiyon')).toBeInTheDocument();
+
+    const [kolay, orta, efsane] = screen.getAllByRole('radio');
+    expect(kolay.closest('label')).toHaveTextContent('Kolay');
+    expect(kolay.closest('label')).toHaveTextContent('Sadece ortalama');
+    expect(orta.closest('label')).toHaveTextContent('Projenin kendisi');
+    expect(orta.closest('label')).toHaveTextContent('Proje 2 ne yapar');
+    expect(efsane.closest('label')).toHaveTextContent('Efsane');
+    expect(efsane.closest('label')).toHaveTextContent('Anlık bildirim');
+    expect(orta).toBeChecked();
+  });
+
+  it('"Bu projeyi seç" POST /secim gönderir; beklerken bekleme, bitince haritaya geçer', async () => {
+    let bitir;
+    vi.mocked(api.secimYap).mockReturnValue(new Promise((cozum) => (bitir = cozum)));
+    ac('/sonuc/5');
+    await screen.findByRole('heading', { name: 'Zorluğunu seç' });
+    await userEvent.click(screen.getByRole('radio', { name: /Efsane/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Bu projeyi seç' }));
+
+    expect(screen.getByRole('heading', { name: 'Görev haritan hazırlanıyor' })).toBeInTheDocument();
+    expect(api.secimYap).toHaveBeenCalledWith({ proje_id: 42, zorluk_modu: 'efsane' });
+    bitir(HARITA);
+
+    expect(await screen.findByRole('heading', { name: 'Görev haritan' })).toBeInTheDocument();
+    expect(api.haritaGetir).toHaveBeenCalledWith('3');
+  });
+
+  it('harita hazırlanamazsa mesajı gösterir; "Zorluk seçimine dön" geri götürür, "Tekrar dene" yeniden ister', async () => {
+    vi.mocked(api.secimYap)
+      .mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0))
+      .mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0))
+      .mockResolvedValueOnce(HARITA);
+    ac('/sonuc/5');
+    await userEvent.click(await screen.findByRole('button', { name: 'Bu projeyi seç' }));
+    expect(await screen.findByRole('heading', { name: 'Görev haritası hazırlanamadı' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Sunucuya ulaşılamıyor.');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Zorluk seçimine dön' }));
+    expect(screen.getByRole('heading', { name: 'Zorluğunu seç' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Bu projeyi seç' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Tekrar dene' }));
+    expect(await screen.findByRole('heading', { name: 'Görev haritan' })).toBeInTheDocument();
+    expect(api.secimYap).toHaveBeenCalledTimes(3);
+  });
+
+  it('düello bitmediyse düelloya döner', async () => {
+    vi.mocked(api.duellolariGetir).mockResolvedValue(TAM_DUELLO.slice(0, 2));
+    ac('/sonuc/5');
+    expect(await screen.findByRole('heading', { name: 'Çeyrek final 3/4' })).toBeInTheDocument();
+  });
+
+  it('tarayıcıda hiçbir şey yokken (başka sekme) öneriler ve maçlar sunucudan gelir', async () => {
+    sessionStorage.clear();
+    vi.mocked(api.onerileriGetir).mockResolvedValue(ONERILER);
+    ac('/sonuc/5');
+    expect(await screen.findByRole('heading', { name: 'Zorluğunu seç' })).toBeInTheDocument();
+    expect(api.onerileriGetir).toHaveBeenCalledWith('5');
+  });
+});
+
+// --- Görev haritası ----------------------------------------------------------
+
+function adimKutusu(sira) {
+  // Adı "4. Adım 4Adım 4 açıklaması" gibi; (?!\d): 1. adım 10, 11, 12 ile karışmasın
+  return screen.getByRole('checkbox', { name: new RegExp(`^${sira}\\. Adım ${sira}(?!\\d)`) });
+}
+
+function haritaIlerlemesi() {
+  return screen.getByRole('progressbar', { name: 'Görev haritası' });
+}
+
+describe('Görev haritası', () => {
+  beforeEach(() => {
+    api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' });
+    vi.mocked(api.haritaGetir).mockResolvedValue(HARITA);
+    vi.mocked(api.projeGetir).mockResolvedValue(ONERILER.find((p) => p.id === 42));
+    vi.mocked(api.adimIsaretle).mockImplementation(async (secimId, { sira, tamamlandi }) => ({
+      ...HARITA,
+      adimlar: HARITA.adimlar.map((a) => (a.sira === sira ? { ...a, tamamlandi } : a)),
+    }));
+  });
+
+  it('açılışta GET /harita; 12 adım sırayla, işaretliler işaretli; üstte "3/12 tamamlandı"', async () => {
+    ac('/harita/3');
+    expect(await screen.findByRole('heading', { name: 'Görev haritan' })).toBeInTheDocument();
+    expect(api.haritaGetir).toHaveBeenCalledWith('3');
+
+    const kutular = screen.getAllByRole('checkbox');
+    expect(kutular).toHaveLength(12);
+    expect(kutular.map((k) => k.closest('label').querySelector('b').textContent)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `${i + 1}. Adım ${i + 1}`),
+    );
+    expect(adimKutusu(1)).toBeChecked();
+    expect(adimKutusu(4)).not.toBeChecked();
+    expect(screen.getByText('Adım 4 açıklaması')).toBeInTheDocument();
+    expect(haritaIlerlemesi()).toHaveTextContent('3/12 tamamlandı');
+    expect(await screen.findByText('Kantin Sırası Tahmini')).toBeInTheDocument();
+    expect(screen.getByText(/Efsane mod/)).toBeInTheDocument();
+  });
+
+  it('kutu işaretlenince PUT { sira, tamamlandi: true }; ilerleme artar', async () => {
+    ac('/harita/3');
+    await screen.findByRole('heading', { name: 'Görev haritan' });
+    await userEvent.click(adimKutusu(4));
+
+    expect(api.adimIsaretle).toHaveBeenCalledWith('3', { sira: 4, tamamlandi: true });
+    await waitFor(() => expect(haritaIlerlemesi()).toHaveTextContent('4/12 tamamlandı'));
+    expect(adimKutusu(4)).toBeChecked();
+  });
+
+  it('işaret kaldırılınca tamamlandi: false gider', async () => {
+    ac('/harita/3');
+    await screen.findByRole('heading', { name: 'Görev haritan' });
+    await userEvent.click(adimKutusu(2));
+
+    expect(api.adimIsaretle).toHaveBeenCalledWith('3', { sira: 2, tamamlandi: false });
+    await waitFor(() => expect(haritaIlerlemesi()).toHaveTextContent('2/12 tamamlandı'));
+    expect(adimKutusu(2)).not.toBeChecked();
+  });
+
+  it('kaydedilirken kutular kilitlenir', async () => {
+    vi.mocked(api.adimIsaretle).mockReturnValue(new Promise(() => {}));
+    ac('/harita/3');
+    await screen.findByRole('heading', { name: 'Görev haritan' });
+    await userEvent.click(adimKutusu(4));
+    expect(adimKutusu(4)).toBeChecked();
+    expect(adimKutusu(5)).toBeDisabled();
+    await userEvent.click(adimKutusu(5));
+    expect(api.adimIsaretle).toHaveBeenCalledTimes(1);
+  });
+
+  it('sunucu kabul etmezse işaret geri alınır, mesaj görünür', async () => {
+    vi.mocked(api.adimIsaretle).mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0));
+    ac('/harita/3');
+    await screen.findByRole('heading', { name: 'Görev haritan' });
+    await userEvent.click(adimKutusu(4));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sunucuya ulaşılamıyor.');
+    expect(adimKutusu(4)).not.toBeChecked();
+    expect(haritaIlerlemesi()).toHaveTextContent('3/12 tamamlandı');
+    expect(adimKutusu(5)).toBeEnabled();
+  });
+
+  it('sayfa yeniden açılınca işaretler sunucudan gelir, kaybolmaz', async () => {
+    vi.mocked(api.haritaGetir).mockResolvedValue({ ...HARITA, adimlar: adimListesi([1, 2, 3, 4, 9]) });
+    ac('/harita/3');
+    await screen.findByRole('heading', { name: 'Görev haritan' });
+    expect(adimKutusu(9)).toBeChecked();
+    expect(haritaIlerlemesi()).toHaveTextContent('5/12 tamamlandı');
+  });
+
+  it('harita bulunamazsa (404) mesaj gösterir', async () => {
+    vi.mocked(api.haritaGetir).mockRejectedValue(new SunucuHatasi('Seçim bulunamadı.', 404));
+    ac('/harita/99');
+    expect(await screen.findByRole('heading', { name: 'Görev haritası açılamadı' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Seçim bulunamadı.');
+  });
+
+  it('proje başlığı alınamazsa harita yine açılır', async () => {
+    vi.mocked(api.projeGetir).mockRejectedValue(new SunucuHatasi('Proje bulunamadı.', 404));
+    ac('/harita/3');
+    expect(await screen.findByRole('heading', { name: 'Görev haritan' })).toBeInTheDocument();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(12);
+  });
+
+  it('oturum düştüyse (401) girişe gönderir', async () => {
+    vi.mocked(api.haritaGetir).mockImplementation(async () => {
+      api.cikisYap();
+      throw new SunucuHatasi('Oturumun süresi doldu, tekrar giriş yap.', 401);
+    });
+    ac('/harita/3');
+    expect(await screen.findByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument();
   });
 });

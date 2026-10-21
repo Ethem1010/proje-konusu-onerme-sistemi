@@ -6,8 +6,10 @@ import {
   bolumleriGetir,
   cikisYap,
   duelloKaydet,
+  adimIsaretle,
   duellolariGetir,
   girisYap,
+  haritaGetir,
   jetonuAl,
   jetonuKaydet,
   kullaniciAdi,
@@ -17,6 +19,9 @@ import {
   profilGetir,
   profilOlustur,
   profilOnayla,
+  projeGetir,
+  secimYap,
+  surprizGetir,
 } from './api.js';
 
 function sahteCevap(durum, govde) {
@@ -185,6 +190,45 @@ describe('api', () => {
     expect(fetchSahte.mock.calls.map(([adres, ayar]) => [adres, ayar.method])).toEqual([
       [`${SUNUCU_ADRESI}/duello/5`, 'GET'],
       [`${SUNUCU_ADRESI}/profil/5`, 'GET'],
+    ]);
+  });
+
+  it('seçim POST /secim ile proje ve zorluk modunu gönderir', async () => {
+    jetonuKaydet({ erisim_jetonu: 'abc', ad: 'Ayşe' });
+    const harita = { secim_id: 3, proje_id: 12, zorluk_modu: 'efsane', adimlar: [] };
+    const fetchSahte = vi.fn(() => sahteCevap(201, harita));
+    vi.stubGlobal('fetch', fetchSahte);
+
+    expect(await secimYap({ proje_id: 12, zorluk_modu: 'efsane' })).toEqual(harita);
+    const [adres, ayar] = fetchSahte.mock.calls[0];
+    expect(adres).toBe(`${SUNUCU_ADRESI}/secim`);
+    expect(ayar.method).toBe('POST');
+    expect(ayar.headers.Authorization).toBe('Bearer abc');
+    expect(JSON.parse(ayar.body)).toEqual({ proje_id: 12, zorluk_modu: 'efsane' });
+  });
+
+  it('harita GET ile alınır, adım PUT ile { sira, tamamlandi } gönderilerek işaretlenir', async () => {
+    const fetchSahte = vi.fn(() => sahteCevap(200, { secim_id: 3, adimlar: [] }));
+    vi.stubGlobal('fetch', fetchSahte);
+
+    await haritaGetir(3);
+    await adimIsaretle(3, { sira: 4, tamamlandi: true });
+    expect(fetchSahte.mock.calls[0][0]).toBe(`${SUNUCU_ADRESI}/harita/3`);
+    expect(fetchSahte.mock.calls[0][1].method).toBe('GET');
+    expect(fetchSahte.mock.calls[1][0]).toBe(`${SUNUCU_ADRESI}/harita/3`);
+    expect(fetchSahte.mock.calls[1][1].method).toBe('PUT');
+    expect(JSON.parse(fetchSahte.mock.calls[1][1].body)).toEqual({ sira: 4, tamamlandi: true });
+  });
+
+  it('sürpriz proje ve tek proje GET ile istenir', async () => {
+    const fetchSahte = vi.fn(() => sahteCevap(200, { id: 60, surpriz: true }));
+    vi.stubGlobal('fetch', fetchSahte);
+
+    await surprizGetir(5);
+    await projeGetir(60);
+    expect(fetchSahte.mock.calls.map(([adres, ayar]) => [adres, ayar.method])).toEqual([
+      [`${SUNUCU_ADRESI}/surpriz/5`, 'GET'],
+      [`${SUNUCU_ADRESI}/projeler/60`, 'GET'],
     ]);
   });
 });

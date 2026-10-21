@@ -223,7 +223,39 @@ select.alan-sec { flex: 1 1 220px; min-width: 0; width: auto; max-width: 360px; 
 .dcard.lose { opacity: 0; transform: translateY(30px); }
 .crown { font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .05em; text-transform: uppercase; }
 
+/* Öneriler: sürpriz proje bölümü */
+.surpriz { display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
+
+/* Sonuç: üç zorluk kartı (radyo düğmeli), telefonda alt alta */
+.modlar { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.modlar legend { padding: 0; margin-bottom: 10px; font-family: var(--display); font-size: 17px; font-weight: 700; }
+.mod { display: flex; flex-direction: column; gap: 6px; padding: 14px; background: var(--surface); border: 2px solid var(--line); border-radius: 14px; cursor: pointer; min-width: 0; transition: border-color .15s, background-color .15s; }
+.mod:hover { border-color: var(--line-2); }
+.mod.secili { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.mod-ust { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.mod input { accent-color: var(--accent); width: 18px; height: 18px; margin: 0; }
+.mod-metin { font-size: 14px; line-height: 1.5; color: var(--fg-2); overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .modlar { grid-template-columns: 1fr; }
+}
+
+/* Görev haritası: üstte "4/12 tamamlandı" çubuğu, altında onay kutulu 12 adım */
+.harita-proje { color: var(--fg); }
+.harita-ilerleme { display: flex; flex-direction: column; gap: 8px; }
+.harita-ilerleme .track { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.harita-ilerleme .track i { display: block; height: 100%; background: var(--good); transition: width .3s; }
+.harita { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.adim label { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.adim label:hover { border-color: var(--line-2); }
+.adim input { accent-color: var(--good); width: 20px; height: 20px; margin: 2px 0 0; flex: none; cursor: pointer; }
+.adim input:disabled { cursor: progress; }
+.adim-govde { display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.adim-govde .muted { font-size: 14px; line-height: 1.5; }
+.adim.tamam label { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+.adim.tamam b { color: var(--muted); text-decoration: line-through; }
+
 @media (prefers-reduced-motion: reduce) {
+  .harita-ilerleme .track i, .mod { transition: none; }
   .ilerleme i { animation: none; left: 0; width: 100%; opacity: .5; }
   .dot, .dcard { transition: none; }
 }

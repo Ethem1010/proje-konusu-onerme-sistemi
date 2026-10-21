@@ -3,12 +3,9 @@ import { Navigate, useNavigate, useParams } from 'react-router';
 import { akisOku, akisYaz } from '../akis.js';
 import { duelloKaydet, duellolariGetir, onerileriGetir, oturumDustu } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
-import Etiket from '../bilesenler/Etiket.jsx';
-import ProjeAyrintisi from '../bilesenler/ProjeAyrintisi.jsx';
-import PuanHalkasi from '../bilesenler/PuanHalkasi.jsx';
+import ProjeKarti from '../bilesenler/ProjeKarti.jsx';
 import UstCubuk from '../bilesenler/UstCubuk.jsx';
 import { duelloProjeleri, MAC_SAYISI, maclar, sampiyon, siradakiMac, TURLAR, turAdi } from '../duello.js';
-import { alanBul } from '../secenekler.js';
 import Bekleme from './Bekleme.jsx';
 
 // Seçilen kart büyür, diğeri kaybolur (demodaki gibi); "hareketi azalt" seçenlerde beklenmez.
@@ -17,36 +14,6 @@ function hareketsiz() {
   return !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 const bekle = (ms) => new Promise((cozum) => setTimeout(cozum, ms));
-
-function ProjeKarti({ proje, icerik, onIcerik, sampiyonMu, secildi, kaybetti, kilitli, onSec }) {
-  const renk = alanBul(proje.alan)?.renk;
-  const icerikId = `duello-icerik-${proje.id}`;
-  const siniflar = ['dcard', secildi && 'win', kaybetti && 'lose'].filter(Boolean).join(' ');
-
-  return (
-    <article className={siniflar} style={renk ? { '--fc': `var(--c${renk})` } : undefined}>
-      <span className="oneri-etiketler">
-        <Etiket renk={renk}>{proje.alan_adi}</Etiket>
-        {proje.kaynak === 'gemini' && <span className="ozel">✨ Sana özel</span>}
-        {sampiyonMu && <span className="crown">Şampiyon</span>}
-      </span>
-      <h2 className="ttl">{proje.baslik}</h2>
-      <PuanHalkasi puan={proje.puan_toplam ?? 0} />
-      <span className="acts">
-        <Dugme tur="ghost" kucuk aria-expanded={icerik} aria-controls={icerikId} onClick={onIcerik}>
-          {icerik ? 'İçeriği gizle' : 'İçerik'}
-        </Dugme>
-        {onSec && (
-          <Dugme kucuk disabled={kilitli} aria-label={`Bunu seç: ${proje.baslik}`} onClick={onSec}>
-            Bunu seç
-          </Dugme>
-        )}
-      </span>
-      {/* Ayrıntı düğmelerin altında açılır; "Bunu seç" yerinden kaymaz. */}
-      {icerik && <ProjeAyrintisi proje={proje} id={icerikId} />}
-    </article>
-  );
-}
 
 export default function Duello() {
   const git = useNavigate();
@@ -163,8 +130,11 @@ export default function Duello() {
                 proje={kazanan}
                 icerik={acikId === kazanan.id}
                 onIcerik={() => icerikDegistir(kazanan.id)}
-                sampiyonMu
+                rozet="Şampiyon"
               />
+            </div>
+            <div className="row">
+              <Dugme onClick={() => git(`/sonuc/${profilId}`)}>Devam et</Dugme>
             </div>
           </section>
         </main>
