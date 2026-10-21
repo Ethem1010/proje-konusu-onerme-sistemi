@@ -10,6 +10,9 @@ ikisinin cevabı öğrencinin formda işaretledikleriyle karşılaştırılır.
 - Gemini'nin cevapları veri/test_gemini.csv dosyasına kaydedilir. Komut tekrar çalıştırılırsa
   Gemini'ye yeniden sorulmaz (günlük kota boşa harcanmaz). Yeniden sormak için: --yeniden
 - Bizim model önce eğitilmiş olmalı: python -m oneri_motoru.egitim
+- Gemini'nin düşünme seviyesi de denenebilir (hız / doğruluk karşılaştırması):
+      python -m oneri_motoru.karsilastir --dusunme minimal
+  Her seviyenin cevapları ayrı dosyaya kaydedilir (veri/test_gemini_minimal.csv gibi).
 """
 import argparse
 import csv
@@ -47,11 +50,16 @@ def _komut(metin):
     return f"Alanlar:\n{alanlar}\n\nÖğrencinin yazısı:\n{metin}"
 
 
-def gemini_sor(test, yeniden=False):
+def _cevap_dosyasi(dusunme=None):
+    return GEMINI_CEVAPLARI if not dusunme else VERI_KLASORU / f"test_gemini_{dusunme.lower()}.csv"
+
+
+def gemini_sor(test, yeniden=False, dusunme=None):
     """Her test metni için Gemini'nin cevabı: {"alanlar": {kod: -1..2}, "en_ilgili": kod, "sure": saniye}."""
     from .yapay_zeka import YapayZekaHatasi, sor  # Gemini kütüphanesi sadece burada gerekir
 
-    kayitli = {} if yeniden else _kayitlilari_oku()
+    dosya = _cevap_dosyasi(dusunme)
+    kayitli = {} if yeniden else _kayitlilari_oku(dosya)
     cevaplar = []
     for i, t in enumerate(test, start=1):
         if t["metin"] in kayitli:
@@ -60,22 +68,22 @@ def gemini_sor(test, yeniden=False):
         print(f"  Gemini'ye soruluyor: {i}/{len(test)}", end="\r")
         bas = time.perf_counter()
         try:
-            cevap = sor(_komut(t["metin"]), sistem=SISTEM, sema=SEMA, sicaklik=0)
+            cevap = sor(_komut(t["metin"]), sistem=SISTEM, sema=SEMA, sicaklik=0, dusunme=dusunme)
         except YapayZekaHatasi as hata:
             print(f"\n  {i}. metinde Gemini cevap vermedi ({hata}), bu metin 'hiçbir alan' sayıldı.")
             cevap = {"alanlar": {}, "en_ilgili": ""}
         cevap["sure"] = round(time.perf_counter() - bas, 2)
         cevaplar.append(cevap)
         kayitli[t["metin"]] = cevap
-        _kaydet(test, kayitli)
+        _kaydet(test, kayitli, dosya)
     print()
     return cevaplar
 
 
-def _kayitlilari_oku():
-    if not GEMINI_CEVAPLARI.exists():
+def _kayitlilari_oku(dosya=GEMINI_CEVAPLARI):
+    if not dosya.exists():
         return {}
-    with open(GEMINI_CEVAPLARI, encoding="utf-8", newline="") as f:
+    with open(dosya, encoding="utf-8", newline="") as f:
         return {
             s["metin"]: {
                 "alanlar": {k: int(s[k]) for k in ALAN_KODLARI if s.get(k, "") != ""},
@@ -86,8 +94,8 @@ def _kayitlilari_oku():
         }
 
 
-def _kaydet(test, kayitli):
-    with open(GEMINI_CEVAPLARI, "w", encoding="utf-8", newline="") as f:
+def _kaydet(test, kayitli, dosya=GEMINI_CEVAPLARI):
+    with open(dosya, "w", encoding="utf-8", newline="") as f:
         yazici = csv.DictWriter(f, fieldnames=["metin", *ALAN_KODLARI, "en_ilgili", "sure"])
         yazici.writeheader()
         for t in test:
@@ -134,6 +142,8 @@ def _satir(ad, bizim, gemini, yuzde=True):
 def main():
     ayar = argparse.ArgumentParser(description="Bizim model ile Gemini'yi test setinde karşılaştırır.")
     ayar.add_argument("--yeniden", action="store_true", help="kayıtlı cevapları kullanma, Gemini'ye yeniden sor")
+    ayar.add_argument("--dusunme", choices=["minimal", "low", "medium", "high"],
+                      help="Gemini'nin düşünme seviyesi (verilmezse modelin varsayılanı)")
     secenek = ayar.parse_args()
 
     if not TEST_DOSYASI.exists():
@@ -147,7 +157,7 @@ def main():
     bizim_sure = (time.perf_counter() - bas) / len(test)
 
     print(f"Gemini'ye {len(test)} metin soruluyor (kayıtlı olanlar tekrar sorulmaz)...")
-    cevaplar = gemini_sor(test, secenek.yeniden)
+    cevaplar = gemini_sor(test, secenek.yeniden, secenek.dusunme)
     gemini = olcumler(*gemini_tahminleri(test, cevaplar))
     gemini_sure = sum(c["sure"] for c in cevaplar) / len(cevaplar)
 
@@ -158,6 +168,7 @@ def main():
     taban = taban_isabet(egitim, test)
 
     print(f"\n=== Test seti: {len(test)} gerçek öğrenci (iki taraf da bu metinleri önceden görmedi) ===")
+    print(f"Gemini düşünme seviyesi: {secenek.dusunme or 'varsayılan'}")
     print(f"{'':<28} {'Bizim model':>10} {'Gemini':>10}")
     _satir("İlgi alanı bulma: kesinlik", bizim["ilgi"][0], gemini["ilgi"][0])
     _satir("İlgi alanı bulma: duyarlılık", bizim["ilgi"][1], gemini["ilgi"][1])
