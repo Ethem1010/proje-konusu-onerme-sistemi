@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { akisOku, akisYaz } from '../akis.js';
 import { onerileriGetir, onerileriUret, oturumDustu } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
@@ -62,20 +62,17 @@ export default function Oneriler() {
   const git = useNavigate();
   const konum = useLocation();
   const { profilId } = useParams();
-  const profil = akisOku('profil');
   const yeniUret = konum.state?.yeniUret === true;
   const kayitli = akisOku('oneriler');
-
-  const profilUygun = profil && String(profil.id) === profilId;
 
   const [liste, setListe] = useState(() => (!yeniUret && kayitli?.profilId === profilId ? kayitli.liste : null));
   const [hata, setHata] = useState('');
   const [deneme, setDeneme] = useState(0);
   const [acikId, setAcikId] = useState(null);
 
-  // deneme değişince ("Tekrar dene") yeniden yüklenir.
+  // deneme değişince ("Tekrar dene") yeniden yüklenir. Profil başkasınınsa sunucu 404 verir.
   useEffect(() => {
-    if (liste || !profilUygun) return undefined;
+    if (liste) return undefined;
     let iptal = false;
     onerileriYukle(profilId, yeniUret)
       .then((gelen) => {
@@ -97,9 +94,6 @@ export default function Oneriler() {
       iptal = true;
     };
   }, [deneme]);
-
-  // Öneriler bir profile bağlı; adres başka bir profili gösteriyorsa "Seni tanıyalım"a dönülür.
-  if (!profilUygun) return <Navigate to="/anlat" replace />;
 
   if (!liste) {
     return (

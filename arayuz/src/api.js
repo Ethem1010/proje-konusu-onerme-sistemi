@@ -111,6 +111,11 @@ export function profilOlustur(govde) {
   return istek('/profil', { yontem: 'POST', govde, jetonlu: true });
 }
 
+// GET /profil/{id} → POST /profil ile aynı kalıp. Profil yoksa ya da başkasınınsa 404.
+export function profilGetir(id) {
+  return istek(`/profil/${id}`, { jetonlu: true });
+}
+
 // PUT /profil/{id} → aynı kalıp, onaylandi: true. Bir alan hem ilgi hem istemediklerdeyse 422.
 export function profilOnayla(id, { alanlar, istemedikleri, beceriler }) {
   return istek(`/profil/${id}`, { yontem: 'PUT', govde: { alanlar, istemedikleri, beceriler }, jetonlu: true });
@@ -126,10 +131,13 @@ export function onerileriUret(profilId) {
   return istek(`/oneriler/${profilId}`, { yontem: 'POST', jetonlu: true });
 }
 
-// POST /duello { profil_id, kazanan_proje_id, kaybeden_proje_id, tur } → 201, aynısı + id
-// Adres sunucuda henüz yok; gelene kadar aynı kalıpta sahte cevap döner. Gelince gövde şu olacak:
-//   return istek('/duello', { yontem: 'POST', govde: secim, jetonlu: true });
-let sahteDuelloId = 0;
+// POST /duello { profil_id, kazanan_proje_id, kaybeden_proje_id, tur } → 201, aynısı + id.
+// Proje daha önce elendiyse ya da turun maçları dolduysa 400.
 export function duelloKaydet(secim) {
-  return Promise.resolve({ id: ++sahteDuelloId, ...secim });
+  return istek('/duello', { yontem: 'POST', govde: secim, jetonlu: true });
+}
+
+// GET /duello/{profilId} → kaydedilmiş maçlar, oynanma sırasıyla (en çok 7); henüz yoksa boş liste
+export function duellolariGetir(profilId) {
+  return istek(`/duello/${profilId}`, { jetonlu: true });
 }
