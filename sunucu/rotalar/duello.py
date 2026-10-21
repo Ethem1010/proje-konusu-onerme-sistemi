@@ -1,4 +1,4 @@
-"""Düello adresi: POST /duello.
+"""Düello adresleri: POST /duello, GET /duello/{profil_id}.
 
 8 proje → 4 çeyrek final, 2 yarı final, 1 final. Bir öğrenci için toplam 7 kayıt.
 Her eşleşmenin sonucu duello_secimleri tablosuna yazılır.
@@ -32,6 +32,16 @@ class DuelloCevabi(BaseModel):
     kazanan_proje_id: int
     kaybeden_proje_id: int
     tur: str
+
+
+def _cevap(kayit: DuelloSecimi) -> DuelloCevabi:
+    return DuelloCevabi(
+        id=kayit.id,
+        profil_id=kayit.profil_id,
+        kazanan_proje_id=kayit.kazanan_proje_id,
+        kaybeden_proje_id=kayit.kaybeden_proje_id,
+        tur=kayit.tur,
+    )
 
 
 def _hata(mesaj: str):
@@ -78,10 +88,22 @@ def duello_kaydet(
     )
     oturum.add(kayit)
     oturum.commit()
-    return DuelloCevabi(
-        id=kayit.id,
-        profil_id=kayit.profil_id,
-        kazanan_proje_id=kayit.kazanan_proje_id,
-        kaybeden_proje_id=kayit.kaybeden_proje_id,
-        tur=kayit.tur,
+    return _cevap(kayit)
+
+
+@router.get("/duello/{profil_id}", response_model=list[DuelloCevabi])
+def duellolari_getir(
+    profil_id: int,
+    kullanici_id: int = Depends(aktif_kullanici_id),
+    oturum: Session = Depends(oturum_al),
+):
+    """Bu profilin kaydedilmiş düello maçları, oynanma sırasıyla (en çok 7).
+
+    Öğrenci düellonun ortasında sayfayı yenilerse arayüz kaldığı yeri buradan bulur.
+    Henüz maç oynanmadıysa boş liste.
+    """
+    kullanicinin_profili(profil_id, kullanici_id, oturum)  # başkasınınsa 404
+    kayitlar = oturum.scalars(
+        select(DuelloSecimi).where(DuelloSecimi.profil_id == profil_id).order_by(DuelloSecimi.id)
     )
+    return [_cevap(k) for k in kayitlar]
