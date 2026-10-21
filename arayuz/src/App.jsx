@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { jetonuAl } from './api.js';
 import Anlat from './sayfalar/Anlat.jsx';
+import Duello from './sayfalar/Duello.jsx';
 import Giris from './sayfalar/Giris.jsx';
 import Kayit from './sayfalar/Kayit.jsx';
 import Oneriler from './sayfalar/Oneriler.jsx';
@@ -43,6 +44,7 @@ function AppRotalari() {
       <Route path="/anlat" element={<GirisGerekli><Anlat /></GirisGerekli>} />
       <Route path="/profil/:id" element={<GirisGerekli><Profil /></GirisGerekli>} />
       <Route path="/oneriler/:profilId" element={<GirisGerekli><Oneriler /></GirisGerekli>} />
+      <Route path="/duello/:profilId" element={<GirisGerekli><Duello /></GirisGerekli>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
