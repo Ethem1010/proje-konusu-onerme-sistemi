@@ -18,7 +18,9 @@ vi.mock('../api.js', async (gercek) => ({
   profilOnayla: vi.fn(),
   onerileriGetir: vi.fn(),
   onerileriUret: vi.fn(),
+  profilGetir: vi.fn(),
   duelloKaydet: vi.fn(),
+  duellolariGetir: vi.fn(),
 }));
 
 const BOLUMLER = [
@@ -455,14 +457,37 @@ function alanSatirlari() {
 describe('Profil onayı', () => {
   beforeEach(() => api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' }));
 
-  it('profil yoksa "Seni tanıyalım"a döner', async () => {
+  it('profil tarayıcıda yoksa (başka sekme) sunucudan istenir (GET /profil/{id})', async () => {
+    vi.mocked(api.profilGetir).mockResolvedValue(PROFIL);
     ac('/profil/5');
-    expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Profilin açılıyor' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Doğru anladık mı?' })).toBeInTheDocument();
+    expect(api.profilGetir).toHaveBeenCalledWith('5');
+    expect(alanSatirlari()).toHaveLength(5);
+    expect(akisOku('profil')).toEqual(PROFIL);
   });
 
-  it('adresteki numara saklanan profilden farklıysa da döner', async () => {
+  it('tarayıcıdaki profil adresteki numaraya uyuyorsa sunucuya gidilmez', () => {
+    akisYaz('profil', PROFIL);
+    ac('/profil/5');
+    expect(screen.getByRole('heading', { name: 'Doğru anladık mı?' })).toBeInTheDocument();
+    expect(api.profilGetir).not.toHaveBeenCalled();
+  });
+
+  it('adresteki numara başka bir profilse o profil sunucudan istenir', async () => {
+    vi.mocked(api.profilGetir).mockResolvedValue({ ...PROFIL, id: 9 });
     akisYaz('profil', PROFIL);
     ac('/profil/9');
+    expect(await screen.findByRole('heading', { name: 'Doğru anladık mı?' })).toBeInTheDocument();
+    expect(api.profilGetir).toHaveBeenCalledWith('9');
+  });
+
+  it('profil bulunamazsa (404) mesaj gösterir, "Seni tanıyalım"a dönülebilir', async () => {
+    vi.mocked(api.profilGetir).mockRejectedValue(new SunucuHatasi('Profil bulunamadı.', 404));
+    ac('/profil/7');
+    expect(await screen.findByRole('heading', { name: 'Profil açılamadı' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Profil bulunamadı.');
+    await userEvent.click(screen.getByRole('button', { name: "Seni tanıyalım'a dön" }));
     expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
   });
 
@@ -650,11 +675,20 @@ describe('Öneriler', () => {
     akisYaz('profil', { ...PROFIL, onaylandi: true });
   });
 
-  it('profil yoksa "Seni tanıyalım"a döner, sunucuya gitmez', async () => {
+  it('tarayıcıda hiçbir şey yokken (başka sekme) de açılır, liste sunucudan gelir', async () => {
     sessionStorage.clear();
+    vi.mocked(api.onerileriGetir).mockResolvedValue(ONERILER);
     ac('/oneriler/5');
-    expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
-    expect(api.onerileriGetir).not.toHaveBeenCalled();
+    expect(await screen.findByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
+    expect(api.onerileriGetir).toHaveBeenCalledWith('5');
+    expect(api.onerileriUret).not.toHaveBeenCalled();
+  });
+
+  it('profil başkasınınsa (404) sunucunun mesajını gösterir', async () => {
+    vi.mocked(api.onerileriGetir).mockRejectedValue(new SunucuHatasi('Profil bulunamadı.', 404));
+    ac('/oneriler/9');
+    expect(await screen.findByRole('heading', { name: 'Projeler getirilemedi' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Profil bulunamadı.');
     expect(api.onerileriUret).not.toHaveBeenCalled();
   });
 
@@ -745,9 +779,10 @@ describe('Öneriler', () => {
 
   it('"Düelloyu başlat" düello ekranını açar', async () => {
     akisYaz('oneriler', { profilId: '5', liste: ONERILER });
+    vi.mocked(api.duellolariGetir).mockResolvedValue([]);
     ac('/oneriler/5');
     await userEvent.click(screen.getByRole('button', { name: 'Düelloyu başlat' }));
-    expect(screen.getByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
   });
 
   it('hata olursa mesaj gösterir; "Tekrar dene" yeniden ister', async () => {
@@ -781,10 +816,19 @@ describe('Öneriler', () => {
 // --- Düello ------------------------------------------------------------------
 
 // ONERILER'de puan sırası: Proje 1 (41), Kantin Sırası Tahmini (42), Proje 3 (43) … Proje 8 (48).
-const DUELLO_IDLERI = [41, 42, 43, 44, 45, 46, 47, 48];
+// GET /duello cevabındaki bir maç
+function oynanan(no, kazanan, kaybeden, tur) {
+  return { id: no, profil_id: 5, kazanan_proje_id: kazanan, kaybeden_proje_id: kaybeden, tur };
+}
 
 function ilerleme() {
   return Number(screen.getByRole('progressbar', { name: 'Düello' }).getAttribute('aria-valuenow'));
+}
+
+// Düello ekranı yüklenene kadar bekler (önce oynanan maçlar sunucudan istenir).
+async function duelloAc(adres = '/duello/5') {
+  ac(adres);
+  await screen.findByRole('progressbar', { name: 'Düello' });
 }
 
 async function sec(baslik) {
@@ -796,25 +840,27 @@ describe('Düello', () => {
     api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' });
     akisYaz('profil', { ...PROFIL, onaylandi: true });
     akisYaz('oneriler', { profilId: '5', liste: ONERILER });
+    vi.mocked(api.duellolariGetir).mockResolvedValue([]);
     vi.mocked(api.duelloKaydet).mockImplementation(async (secim) => ({ id: 1, ...secim }));
   });
 
-  it('profil yoksa "Seni tanıyalım"a döner', async () => {
-    sessionStorage.clear();
+  it('açılırken oynanan maçlar sunucudan istenir (GET /duello)', async () => {
     ac('/duello/5');
-    expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Düello hazırlanıyor' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+    expect(api.duellolariGetir).toHaveBeenCalledWith('5');
   });
 
-  it('ilk maç çeyrek final 1/4: en yüksek puanlı proje ile 8. proje', () => {
-    ac('/duello/5');
+  it('ilk maç çeyrek final 1/4: en yüksek puanlı proje ile 8. proje', async () => {
+    await duelloAc();
     expect(screen.getByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Proje 1' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Proje 8' })).toBeInTheDocument();
     expect(ilerleme()).toBe(0);
   });
 
-  it('seçim kaydedilir (POST /duello kalıbı) ve sonraki maça geçilir', async () => {
-    ac('/duello/5');
+  it('seçim POST /duello ile kaydedilir ve sonraki maça geçilir', async () => {
+    await duelloAc();
     await sec('Proje 8');
 
     expect(await screen.findByRole('heading', { name: 'Çeyrek final 2/4' })).toBeInTheDocument();
@@ -822,11 +868,10 @@ describe('Düello', () => {
     expect(screen.getByRole('heading', { name: 'Proje 4' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Proje 5' })).toBeInTheDocument();
     expect(ilerleme()).toBe(1);
-    expect(akisOku('duello')).toEqual({ profilId: '5', projeler: DUELLO_IDLERI, kazananlar: [48] });
   });
 
   it('7 seçim: 4 çeyrek final, 2 yarı final, final; sonunda şampiyon görünür', async () => {
-    ac('/duello/5');
+    await duelloAc();
     await sec('Proje 1');
     await sec('Proje 4');
     await sec('Kantin Sırası Tahmini');
@@ -851,25 +896,36 @@ describe('Düello', () => {
     expect(api.duelloKaydet).toHaveBeenLastCalledWith({ profil_id: 5, kazanan_proje_id: 42, kaybeden_proje_id: 41, tur: 'final' });
   });
 
-  it('sayfa yeniden açılınca kaldığı maçtan devam eder', () => {
-    akisYaz('duello', { profilId: '5', projeler: DUELLO_IDLERI, kazananlar: [41, 44] });
-    ac('/duello/5');
+  it('sunucuda oynanmış maçlar varsa kaldığı maçtan devam eder', async () => {
+    vi.mocked(api.duellolariGetir).mockResolvedValue([oynanan(1, 41, 48, 'ceyrek'), oynanan(2, 44, 45, 'ceyrek')]);
+    await duelloAc();
     expect(screen.getByRole('heading', { name: 'Çeyrek final 3/4' })).toBeInTheDocument();
     expect(ilerleme()).toBe(2);
   });
 
-  it('öneriler değiştiyse eski düello sayılmaz, baştan başlar', () => {
-    akisYaz('duello', { profilId: '5', projeler: [1, 2, 3, 4, 5, 6, 7, 8], kazananlar: [1, 4] });
+  it('düello bitmişse doğrudan şampiyon görünür', async () => {
+    vi.mocked(api.duellolariGetir).mockResolvedValue([
+      oynanan(1, 41, 48, 'ceyrek'),
+      oynanan(2, 44, 45, 'ceyrek'),
+      oynanan(3, 42, 47, 'ceyrek'),
+      oynanan(4, 43, 46, 'ceyrek'),
+      oynanan(5, 41, 44, 'yari'),
+      oynanan(6, 42, 43, 'yari'),
+      oynanan(7, 42, 41, 'final'),
+    ]);
     ac('/duello/5');
-    expect(screen.getByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Şampiyon belli oldu' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Kantin Sırası Tahmini' })).toBeInTheDocument();
   });
 
-  it('öneriler tarayıcıda yoksa kayıtlı liste sunucudan istenir', async () => {
-    akisYaz('oneriler', null);
+  it('tarayıcıda hiçbir şey yokken (başka sekme) öneriler ve maçlar sunucudan gelir', async () => {
+    sessionStorage.clear();
     vi.mocked(api.onerileriGetir).mockResolvedValue(ONERILER);
-    ac('/duello/5');
-    expect(await screen.findByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+    vi.mocked(api.duellolariGetir).mockResolvedValue([oynanan(1, 41, 48, 'ceyrek')]);
+    await duelloAc();
     expect(api.onerileriGetir).toHaveBeenCalledWith('5');
+    expect(screen.getByRole('heading', { name: 'Çeyrek final 2/4' })).toBeInTheDocument();
+    expect(akisOku('oneriler')).toEqual({ profilId: '5', liste: ONERILER });
   });
 
   it('henüz öneri yoksa öneriler ekranına gider', async () => {
@@ -880,8 +936,19 @@ describe('Düello', () => {
     expect(await screen.findByRole('heading', { name: 'Projelerin hazırlanıyor' })).toBeInTheDocument();
   });
 
-  it('"İçerik" projenin ayrıntısını açar', async () => {
+  it('maçlar alınamazsa mesaj gösterir; "Tekrar dene" yeniden ister', async () => {
+    vi.mocked(api.duellolariGetir)
+      .mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0))
+      .mockResolvedValueOnce([]);
     ac('/duello/5');
+    expect(await screen.findByRole('heading', { name: 'Düello açılamadı' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Sunucuya ulaşılamıyor.');
+    await userEvent.click(screen.getByRole('button', { name: 'Tekrar dene' }));
+    expect(await screen.findByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+  });
+
+  it('"İçerik" projenin ayrıntısını açar', async () => {
+    await duelloAc();
     const [dugme] = screen.getAllByRole('button', { name: 'İçerik' });
     await userEvent.click(dugme);
     expect(dugme).toHaveAttribute('aria-expanded', 'true');
@@ -891,7 +958,7 @@ describe('Düello', () => {
 
   it('kaydedilirken iki kart da kilitlenir, ikinci kez gönderilemez', async () => {
     vi.mocked(api.duelloKaydet).mockReturnValue(new Promise(() => {}));
-    ac('/duello/5');
+    await duelloAc();
     await sec('Proje 1');
     expect(screen.getByRole('button', { name: 'Bunu seç: Proje 1' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Bunu seç: Proje 8' })).toBeDisabled();
@@ -899,14 +966,14 @@ describe('Düello', () => {
     expect(api.duelloKaydet).toHaveBeenCalledTimes(1);
   });
 
-  it('kayıt hata verirse mesajı gösterir, aynı maçta kalır', async () => {
-    vi.mocked(api.duelloKaydet).mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0));
-    ac('/duello/5');
+  it('sunucu seçimi kabul etmezse (400) mesajını gösterir, aynı maçta kalır', async () => {
+    vi.mocked(api.duelloKaydet).mockRejectedValueOnce(new SunucuHatasi('41 numaralı proje daha önce elendi.', 400));
+    await duelloAc();
     await sec('Proje 1');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Sunucuya ulaşılamıyor.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('41 numaralı proje daha önce elendi.');
     expect(screen.getByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bunu seç: Proje 1' })).toBeEnabled();
-    expect(akisOku('duello')).toBeNull();
+    expect(ilerleme()).toBe(0);
   });
 
   it('oturum düştüyse (401) girişe gönderir', async () => {
@@ -914,13 +981,13 @@ describe('Düello', () => {
       api.cikisYap();
       throw new SunucuHatasi('Oturumun süresi doldu, tekrar giriş yap.', 401);
     });
-    ac('/duello/5');
+    await duelloAc();
     await sec('Proje 1');
     expect(await screen.findByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument();
   });
 
   it('geri düğmesi öneriler ekranına döner', async () => {
-    ac('/duello/5');
+    await duelloAc();
     await userEvent.click(screen.getByRole('button', { name: '← Geri' }));
     expect(await screen.findByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
   });
