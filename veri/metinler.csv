@@ -1,4 +1,8 @@
 yazan,metin,web,mobil,yapay_zeka,goruntu_isleme,dogal_dil,veri_bilimi,siber_guvenlik,gomulu_iot,oyun,bulut_devops,veritabani,ag_dagitik,beceriler (virgülle),kontrol_eden,not
+ÖRNEK,"React ile birkaç site yaptım, frontend tarafı çok hoşuma gidiyor. Yapay zekâ konularına hiç girmedim, açıkçası pek ilgimi de çekmiyor.",2,,-1,,,,,,,,,,"React, JavaScript, HTML/CSS",,
+ÖRNEK,"Kameradan yüz tanıma yapan bir şey denemek istiyorum, OpenCV'yi biraz kurcaladım. Web işlerinden sıkıldım artık.",-1,,1,2,,,,,,,,,"Python, OpenCV",,
+ÖRNEK,"arduinoyla sıcaklık sensörü projesi yapmıştım, donanımla uğraşmayı seviyorum. telefona da bağlansa güzel olur",,1,,,,,,2,,,,,"Arduino, C",,
+ÖRNEK,"Unity'de küçük bir 2D oyun yaptım, oyun yapmak en sevdiğim şey. Veritabanı dersini hiç sevmedim.",,,,,,,,,2,,-1,,"Unity, C#",,
 Ethem,"veritabanı dersi için böyle kayıt falan tutan basit bi site yapmak istiyorum. zaten sql ve html biliyorum, ona göre bişey olursa iyi olur.",2,,,,,,,,,,2,,"SQL, HTML/CSS",,
 Ethem,"ya bitirme projesi için artık konuyu netleştirmem lazım ama bi türlü karar veremedim. aklımda derin öğrenme falan var, böyle kamera görüntüsüyle bişiler yapan bişeyler olsun istiyorum aslında. ama sakın web sitesi falan demeyin, bıkkınlık geldi artık front-endu back-endu uğraşmak istemiyorum. python ve pytorch ile bişeyler çıkarabiliriz diye düşünüyorum.",-1,,2,2,,,,,,,,,"Python, PyTorch",,
 Ethem,"abi yaz tatilinde boş durmayayım diyorum, unity'de c# kullanarak şöyle eğlenceli bişiler yapmak istiyorum ya.",,,,,,,,,2,,,,"Unity, C#",,
@@ -9,3 +13,13 @@ Ethem,"ders ödevi için telefona bi uygualma yapmk istiyorum ama ne olacağına
 Ethem,"yazın stajda bayağı docker falan kullandım, uygulamaları sunucuya ayağa kaldırma işleri acayip hoşuma gitti. böyle cloud/devops tarzı bi bitirme projesi yapsam diyorum. biraz da veritabanı işin içine girerse fena olmaz, git ve linux da elimiz ayakımız zaten.",,,,,,,,,,2,1,,"Docker, Git, Linux",,
 Ethem,"dönem projesi için artık bişey bulmam lazım, şöyle türkçe metinleri falan analiziyle uğraşsak ya da basit bi chatbot yapsak iyi olur. pandas ve python ile veri işlerini severim aslında. yalnız geçen dönem görüntü işleme dersinden kaldım, allah aşkına o konuya benzer bişey önermeyin sakın.",,,,-1,2,1,,,,,,,"Python, Pandas",,
 Ethem,"bitirme projesi için kod yazıp uygulama geliştirmekten ziyade biraz daha araştırma yapmalı bişeyler arıyorum. veri analizi, istatistiksel grafikler falan çıkaracağımız akademik bi çalışma olsun istiyorum. bulduğumuz sonuçları belki ufak bi web sitesinde sergileriz ama telefona uygulaması falan asla istemiyorum, hiç uğraşamam.",1,-1,,,,2,,,,,,,,,
+Ekip,"ya bi veritabanı projesi arıyom, sql ve html ile basit bişiler yapsak yeter ya.",1,,,,,,,,,,2,,"SQL, HTML/CSS",,"Formdan (31. cevap), etiket metne göre"
+Ekip,"bitirme için artik derin öğrenme kamera işlerine girmek istiyom, ama sakın web falan demeyin uğraşamam bıkktım.",-1,,2,2,,,,,,,,,,,"Formdan (32. cevap), etiket metne göre"
+Ekip,unity c# ile bi mobil oyun patlatalım ya tatilde.,,1,,,,,,,2,,,,"Unity, C#",,"Formdan (33. cevap), etiket metne göre"
+Ekip,"ne yapıcağımı hiç bilmiyom valla, pythonla ilgili orta halli bişeyler verin geçelim.",,,,,,,,,,,,,Python,,"Formdan (34. cevap), etiket metne göre"
+Ekip,"mikroişlemciler için arduino ile bi sensör cihazı yapacagız telefondan yönetmeli, c biliyoz biraz.",,1,,,,,,2,,,,,"Arduino, C",,"Formdan (35. cevap), etiket metne göre"
+Ekip,eknofest için ağ trafiği izleyen hacker tarzı saldırı tespit sistemi kurmak istiyoruz linux üzerinde.,,,,,,,2,,,,,1,Linux,,"Formdan (36. cevap), etiket metne göre"
+Ekip,ders ödevine telefona uygualma yapıcam ama oyun kesinlikle olmasın sevmiyom.,,2,,,,,,,-1,,,,,,"Formdan (37. cevap), etiket metne göre"
+Ekip,"stajda docker linux kullandım çok sevdim, cloud devops üzerine bi bitirme projesi yapsam süper olur, veritabanı da olsun biraz.",,,,,,,,,,2,1,,"Docker, Linux",,"Formdan (38. cevap), etiket metne göre"
+Ekip,metin analizi ya da chatbot tarzı bişeyler arıyom ama noluur görüntü işleme olmasın ondan kaldım zaten.,,,,-1,2,,,,,,,,,,"Formdan (39. cevap), etiket metne göre"
+Ekip,"araştırma odaklı veri analizi istatistik raporu çıkarmak istiyom bitirme için, mobil app falan asla istemiyom",,-1,,,,2,,,,,,,,,"Formdan (40. cevap), etiket metne göre"

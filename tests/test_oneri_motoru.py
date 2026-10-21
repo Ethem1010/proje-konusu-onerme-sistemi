@@ -1,8 +1,8 @@
 """Öneri motoru testleri. Ana klasörden çalıştır:  python -m unittest"""
 import unittest
 
-from oneri_motoru.etiketler import ALAN_KODLARI, beceri_bul, turkce_kucuk
-from oneri_motoru.model import ProfilModeli, olumsuz_isaretle
+from oneri_motoru.etiketler import ALAN_KODLARI, beceri_bul, sade, turkce_kucuk
+from oneri_motoru.model import ProfilModeli, _on_isle
 from oneri_motoru.veri import metinleri_oku, projeleri_oku
 
 
@@ -19,12 +19,26 @@ class BeceriTesti(unittest.TestCase):
     def test_turkce_buyuk_harf(self):
         self.assertEqual(turkce_kucuk("IŞIK İSTANBUL"), "ışık istanbul")
 
+    def test_turkce_harfsiz_yazim(self):
+        # Telefonda Türkçe harf kullanmadan yazan öğrenci
+        self.assertEqual(beceri_bul("ag temelleri biliyorum"), ["Ağ Temelleri"])
+        self.assertEqual(beceri_bul("AĞ TEMELLERİ biliyorum"), ["Ağ Temelleri"])
+        self.assertEqual(sade("Ağ Güvenliği ÇIKIŞ"), "ag guvenligi cikis")
+
 
 class OlumsuzlukTesti(unittest.TestCase):
     def test_olumsuz_parca_isaretlenir(self):
-        sonuc = olumsuz_isaretle("unity ilgimi çekiyor, web istemiyorum")
+        sonuc = _on_isle("unity ilgimi çekiyor, web istemiyorum")
         self.assertIn("olmz_web", sonuc)
         self.assertNotIn("olmz_unity", sonuc)
+
+    def test_turkce_harfsiz_ve_konusma_dili(self):
+        for metin in ("web istemiyom", "webden sikildim", "webden sıkıldım", "web degil"):
+            self.assertIn("olmz_web", _on_isle(metin), metin)
+
+    def test_sevmek_istemek_olumsuz_degil(self):
+        for metin in ("oyun yapmayı sevmek güzel", "oyun yapmak istemek"):
+            self.assertNotIn("olmz_", _on_isle(metin), metin)
 
 
 class VeriTesti(unittest.TestCase):

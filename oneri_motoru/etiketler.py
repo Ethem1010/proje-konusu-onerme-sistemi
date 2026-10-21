@@ -67,7 +67,11 @@ BECERILER = {
 }
 BECERI_ADLARI = list(BECERILER)
 
-_HARF = "a-zçğıöşü0-9"
+_HARF = "a-z0-9"
+
+# Öğrenciler çoğu zaman telefonda Türkçe harf kullanmadan yazıyor: "ağ" yerine "ag", "sıkıldım" yerine "sikildim".
+# Metin de yazılışlar da bu sade hâle çevrilip karşılaştırılır, böylece iki yazım da yakalanır.
+_SADELESTIR = str.maketrans("çğıöşüâîû", "cgiosuaiu")
 
 
 def turkce_kucuk(metin):
@@ -75,11 +79,17 @@ def turkce_kucuk(metin):
     return metin.replace("I", "ı").replace("İ", "i").lower()
 
 
+def sade(metin):
+    """Küçük harfe çevirir ve Türkçe harfleri sadeleştirir: "Ağ Güvenliği" -> "ag guvenligi"."""
+    return turkce_kucuk(metin).translate(_SADELESTIR)
+
+
 # Başka bir becerinin başı olan yazılışlar: "java" + "script" Java sayılmasın
 _DEVAMI_OLMASIN = {"java": "script"}
 
 
 def _desen(yazilis):
+    yazilis = sade(yazilis)
     bas = rf"(?<![{_HARF}])"
     if yazilis in _DEVAMI_OLMASIN:
         return bas + re.escape(yazilis) + f"(?!{_DEVAMI_OLMASIN[yazilis]})"
@@ -97,8 +107,8 @@ _DESENLER = {
 
 def beceri_bul(metin):
     """Metinde adı geçen becerileri listedeki sırayla döner."""
-    kucuk = turkce_kucuk(metin)
-    return [beceri for beceri, desen in _DESENLER.items() if desen.search(kucuk)]
+    metin = sade(metin)
+    return [beceri for beceri, desen in _DESENLER.items() if desen.search(metin)]
 
 
 def beceri_duzelt(ad):
