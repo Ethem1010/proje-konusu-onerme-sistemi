@@ -9,7 +9,7 @@ Sonra tarayıcıda http://127.0.0.1:8000/docs adresinden bütün adresleri dene.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .rotalar import auth, bolumler, oneriler, profil
+from .rotalar import auth, bolumler, duello, oneriler, profil, projeler, secim
 app = FastAPI(
     title="Konu Kartları API",
     description="Öğrencilerin ilgi alanlarına göre proje konusu öneren sistemin sunucusu.",
@@ -38,3 +38,6 @@ app.include_router(auth.router)
 app.include_router(bolumler.router)
 app.include_router(profil.router)
 app.include_router(oneriler.router)
+app.include_router(projeler.router)
+app.include_router(duello.router)
+app.include_router(secim.router)
