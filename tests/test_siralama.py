@@ -94,5 +94,22 @@ class GeminiTesti(unittest.TestCase):
         self.assertEqual([a["sira"] for a in harita], list(range(1, 13)))
 
 
+class DusunmeTesti(unittest.TestCase):
+    def test_dusunme_ayari_desteklenmezse_ayarsiz_sorulur(self):
+        from oneri_motoru import uretim
+        istekler = []
+
+        def sahte_sor(komut, **ayar):
+            istekler.append(ayar.get("dusunme"))
+            if ayar.get("dusunme"):
+                raise YapayZekaHatasi("400 thinking_level is not supported for this model")
+            return {"adimlar": [{"baslik": "Adım", "aciklama": "Açıklama"}] * 12}
+
+        with mock.patch("oneri_motoru.uretim.sor", side_effect=sahte_sor), mock.patch.object(uretim, "DUSUNME", "low"):
+            harita = uretim.gorev_haritasi({"baslik": "Deneme", "ne": "Deneme projesi"})
+        self.assertEqual(len(harita), 12)
+        self.assertEqual(istekler, ["low", None])
+
+
 if __name__ == "__main__":
     unittest.main()
