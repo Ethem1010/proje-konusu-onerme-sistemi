@@ -2,7 +2,7 @@
 import unittest
 
 from oneri_motoru.etiketler import ALAN_KODLARI, beceri_bul, sade, turkce_kucuk
-from oneri_motoru.model import ProfilModeli, _on_isle
+from oneri_motoru.model import ProfilModeli, _on_isle, olumlu_kisim
 from oneri_motoru.profil import bilinen_beceriler
 from oneri_motoru.veri import metinleri_oku, projeleri_oku
 
@@ -46,6 +46,11 @@ class OlumsuzlukTesti(unittest.TestCase):
     def test_turkce_harfsiz_ve_konusma_dili(self):
         for metin in ("web istemiyom", "webden sikildim", "webden sıkıldım", "web degil"):
             self.assertIn("olmz_web", _on_isle(metin), metin)
+
+    def test_parca_ozelligi_olumsuz_kismi_gormez(self):
+        # "siber" parçası olumsuz cümlede de geçiyor; parça özelliği onu görmemeli
+        self.assertEqual(olumlu_kisim("oyun yapcam, ama siber güvenlik sıkıcı geliyor"), "oyun yapcam")
+        self.assertEqual(olumlu_kisim("web istemiyorum"), "")
 
     def test_sevmek_istemek_olumsuz_degil(self):
         for metin in ("oyun yapmayı sevmek güzel", "oyun yapmak istemek"):

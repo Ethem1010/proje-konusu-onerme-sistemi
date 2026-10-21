@@ -2,7 +2,7 @@
 
 Nasıl çalışır?
 1. Metin sayılara çevrilir (TF-IDF). Hem kelimelere ("unity", "telefon") hem de
-   kelime parçalarına ("istemiyorum" içindeki "iste", "miyor") bakılır. Parçalara bakmak
+   kelime parçalarına ("dockerla" içindeki "dock", "ocker") bakılır. Parçalara bakmak
    Türkçenin ekleri yüzünden önemli: "dockerla", "docker'ı", "docker" aynı şeyi anlatır.
 2. Her alan için ayrı bir Lojistik Regresyon sınıflandırıcısı vardır. Her biri metni
    üç gruptan birine koyar: istemiyor (-1), bahsetmiyor (0), ilgileniyor (1-2).
@@ -35,7 +35,7 @@ OLUMSUZ, YOK, OLUMLU = -1, 0, 1
 _PARCA_SINIRI = re.compile(r"[,.;:!?\n]+|\b(?:ama|fakat|ancak|yalniz|lakin)\b")
 _OLUMSUZLUK = re.compile(
     r"\b\w+(?:m[iu]yo\w*|m[ae]z\w*|m[ae]s[i]n\w*|m[ae]y[i]n\w*|m[ae]y[i]z\w*|m[ae]d[i]\w*|(?<!ta)m[ae]m)\b"
-    r"|\b(?:sikil|bik[tkm]|nefret|asla|degil|kaldim|uzak dur)\w*"
+    r"|\b(?:sikil|sikic|bik[tkm]|nefret|asla|degil|kaldim|uzak dur)\w*"
     r"|\b(?:hoslanma|sevme|isteme)(?!k)\w*"  # "sevmek", "istemek" olumsuz değil
 )
 
@@ -53,6 +53,17 @@ def _on_isle(metin):
     return olumsuz_isaretle(sade(metin))
 
 
+def olumlu_kisim(metin):
+    """Kelime parçası özellikleri için metnin sadece olumsuz olmayan kısmı.
+
+    Parçalara bakan özellik olumsuzluğu bilmez: "siber güvenlik sıkıcı geliyor" metnindeki "siber"
+    parçası, "siber güvenlik istiyorum" metnindekiyle aynı görünür ve model karışır. Bu yüzden
+    olumsuz cümle parçaları buradan çıkarılır; olumsuzluğu kelime özellikleri (olmz_) öğrenir.
+    """
+    parcalar = (p.strip() for p in _PARCA_SINIRI.split(sade(metin)))
+    return " ".join(p for p in parcalar if p and not _OLUMSUZLUK.search(p))
+
+
 def _sinif(etiket):
     """Veri setindeki 2/1/0/-1 etiketini modelin üç sınıfına indirger."""
     if etiket > 0:
@@ -67,7 +78,7 @@ class ProfilModeli:
             preprocessor=_on_isle, ngram_range=(1, 2), min_df=1, sublinear_tf=True
         )
         self.parca = TfidfVectorizer(
-            preprocessor=sade, analyzer="char_wb", ngram_range=(3, 5), min_df=1, sublinear_tf=True
+            preprocessor=olumlu_kisim, analyzer="char_wb", ngram_range=(3, 5), min_df=1, sublinear_tf=True
         )
         self.siniflandiricilar = {}
 
