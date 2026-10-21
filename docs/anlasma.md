@@ -46,6 +46,7 @@ Durum: ✅ çalışıyor, ⏳ yazılacak (hangi hafta).
 | `GET /oneriler/{profil_id}` | ✓ | ✅ | Kayıtlı 10 projeyi tekrar verir |
 | `GET /projeler/{id}` | ✓ | ✅ | Tek projenin bütün detayı |
 | `POST /duello` | ✓ | ✅ | Düello seçimini kaydeder |
+| `GET /duello/{profil_id}` | ✓ | ✅ | Kayıtlı düello maçlarını verir (sayfa yenilenince) |
 | `POST /secim` | ✓ | ✅ | Seçilen projeyi kaydeder, 12 adımlık haritayı oluşturur |
 | `GET /harita/{secim_id}` | ✓ | ✅ | Görev haritasını verir |
 | `PUT /harita/{secim_id}` | ✓ | ✅ | Bir adımı tamamlandı/tamamlanmadı yapar |
@@ -130,6 +131,9 @@ Profil yoksa ya da başkasınınsa: 404.
 Kurallar (uymazsa 400): `tur` `ceyrek`/`yari`/`final` olmalı; iki proje farklı, bu profilin ve `duelloda: true` olmalı;
 bir turun eşleşme sayısı dolduysa ya da projelerden biri daha önce elendiyse kabul edilmez.
 Profil başkasınınsa 404. İlk düello kaydından sonra `POST /oneriler` 409 verir (liste kilitlenir).
+
+**`GET /duello/{profil_id}`**: cevap `POST /duello` cevaplarının listesi, oynanma sırasıyla (en çok 7). Henüz maç yoksa boş liste,
+profil başkasınınsa 404. Düellonun ortasında sayfa yenilenirse arayüz kaldığı yeri buradan bulur.
 
 **`POST /secim`**
 ```json
