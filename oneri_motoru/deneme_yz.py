@@ -9,7 +9,8 @@
 import json
 import time
 
-from .yapay_zeka import MODEL, YapayZekaHatasi, kullanilabilir_modeller, sor
+from .uretim import DUSUNME
+from .yapay_zeka import MODEL, ZAMAN_ASIMI_SANIYE, YapayZekaHatasi, kullanilabilir_modeller, sor
 
 ORNEK_METIN = (
     "Makine mühendisliği 3. sınıftayım. SolidWorks ve Arduino biliyorum, Python'u orta seviyede "
@@ -55,7 +56,7 @@ def main():
     for ad in flashlar:
         print("   -", ad, "  <-- şu an kullanılan" if ad == MODEL else "")
 
-    print(f"\n2) Profil çıkarma denemesi (model: {MODEL})")
+    print(f"\n2) Profil çıkarma denemesi (model: {MODEL}, düşünme: {DUSUNME}, en fazla {ZAMAN_ASIMI_SANIYE:g} sn)")
     baslangic = time.perf_counter()
     try:
         profil = sor(
@@ -64,6 +65,7 @@ def main():
             "ve bildiği becerileri çıkar. Türkçe yaz.",
             sema=PROFIL_SEMASI,
             sicaklik=0.2,
+            dusunme=DUSUNME,  # sistemle aynı ayar: deneme gerçek kullanımdaki hızı göstersin
         )
     except YapayZekaHatasi as hata:
         print("   HATA:", hata)
