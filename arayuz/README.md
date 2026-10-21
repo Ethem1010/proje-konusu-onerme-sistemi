@@ -20,9 +20,10 @@ Arayüz Seyithan'ın sunucusuna `http://127.0.0.1:8000` adresinden bağlanır (`
 - `src/api.js`: sunucuya istek gönderen tek yer
 - `src/secenekler.js`: 12 ilgi alanı (kod, ad, renk), puan ölçeği, zorluklar, beceriler
 - `src/akis.js`: öğrencinin ekranlar arasında taşıdığı bilgiler
+- `src/duello.js`: düello kuralları (hangi 8 proje, eşleşmeler 1-8, 4-5, 2-7, 3-6, şampiyon)
 - `src/tema.css`: renkler (açık ve koyu tema), yazı tipleri, form ve yerleşim
 - `src/tema.js`: açık/koyu tema seçimi (tarayıcıda saklanır)
 - `src/bilesenler/`: Dugme, Etiket, PuanHalkasi, DonenKart, GeriDugmesi, AdimSeridi, UstCubuk,
-  Logo, GirisCercevesi, TemaDugmesi
+  Logo, GirisCercevesi, TemaDugmesi, ProjeAyrintisi
 - `src/sayfalar/`: Giris, Kayit, Anlat ("Seni tanıyalım" ve üç soru), Profil (profil onayı),
-  Oneriler (10 proje), Bekleme
+  Oneriler (10 proje), Duello, Bekleme
