@@ -40,15 +40,16 @@ Durum: ✅ çalışıyor, ⏳ yazılacak (hangi hafta).
 | `GET /auth/ben` | ✓ | ✅ | Jetonun sahibini verir |
 | `GET /bolumler` | - | ✅ | Bölüm listesi |
 | `POST /profil` | ✓ | ✅ | Öğrencinin yazısından profil çıkarır |
+| `GET /profil/{id}` | ✓ | ✅ | Kayıtlı profili verir (onay ekranı yenilenince) |
 | `PUT /profil/{id}` | ✓ | ✅ | Öğrencinin düzelttiği profili kaydeder ve onaylar |
 | `POST /oneriler/{profil_id}` | ✓ | ✅ | 10 proje üretir, puanlar, kaydeder |
 | `GET /oneriler/{profil_id}` | ✓ | ✅ | Kayıtlı 10 projeyi tekrar verir |
-| `GET /projeler/{id}` | ✓ | ⏳ 2. hafta | Tek projenin bütün detayı |
-| `POST /duello` | ✓ | ⏳ 3. hafta | Düello seçimini kaydeder |
-| `POST /secim` | ✓ | ⏳ 3. hafta | Seçilen projeyi kaydeder, 12 adımlık haritayı oluşturur |
-| `GET /harita/{secim_id}` | ✓ | ⏳ 3. hafta | Görev haritasını verir |
-| `PUT /harita/{secim_id}` | ✓ | ⏳ 3. hafta | Bir adımı tamamlandı/tamamlanmadı yapar |
-| `GET /surpriz/{profil_id}` | ✓ | ⏳ 3. hafta | Sürpriz proje verir |
+| `GET /projeler/{id}` | ✓ | ✅ | Tek projenin bütün detayı |
+| `POST /duello` | ✓ | ✅ | Düello seçimini kaydeder |
+| `POST /secim` | ✓ | ✅ | Seçilen projeyi kaydeder, 12 adımlık haritayı oluşturur |
+| `GET /harita/{secim_id}` | ✓ | ✅ | Görev haritasını verir |
+| `PUT /harita/{secim_id}` | ✓ | ✅ | Bir adımı tamamlandı/tamamlanmadı yapar |
+| `GET /surpriz/{profil_id}` | ✓ | ✅ | Sürpriz proje verir |
 
 ### 2.1 Çalışan adresler
 
@@ -114,13 +115,52 @@ Profil yoksa ya da başkasınınsa: 404.
 - Gemini cevap vermezse ya da öğrencinin günlük hakkı dolduysa hata verilmez, 10 projenin hepsi havuzdan gelir.
 - Günlük hak sadece Gemini gerçekten proje ürettiyse 1 azalır. Sınır `.env`'deki `GUNLUK_YZ_HAKKI` (yazılmazsa 10).
 
-### 2.2 Yazılacak adresler
+**`GET /profil/{id}`**: cevap `POST /profil` ile aynı kalıp. Profil yoksa ya da başkasınınsa 404.
 
-**`POST /duello`**: istek `{ "profil_id": 5, "kazanan_proje_id": 12, "kaybeden_proje_id": 15, "tur": "ceyrek" }` (`tur`: `ceyrek`, `yari`, `final`).
+**`GET /projeler/{id}`**: cevap tek proje (bkz. 4. bölüm). Proje başka bir öğrencinin profiline aitse 404.
 
-**`POST /secim`**: istek `{ "proje_id": 12, "zorluk_modu": "orta" }` (`kolay`, `orta`, `efsane`), cevap `{ "secim_id": 3, "adimlar": [ { "sira": 1, "baslik": "...", "aciklama": "...", "tamamlandi": false }, "... 12 tane" ] }`.
+**`POST /duello`**
+```json
+// istek
+{ "profil_id": 5, "kazanan_proje_id": 12, "kaybeden_proje_id": 15, "tur": "ceyrek" }
+// cevap (201)
+{ "id": 1, "profil_id": 5, "kazanan_proje_id": 12, "kaybeden_proje_id": 15, "tur": "ceyrek" }
+```
+8 proje → 4 `ceyrek`, 2 `yari`, 1 `final`: bir profil için toplam 7 kayıt.
+Kurallar (uymazsa 400): `tur` `ceyrek`/`yari`/`final` olmalı; iki proje farklı, bu profilin ve `duelloda: true` olmalı;
+bir turun eşleşme sayısı dolduysa ya da projelerden biri daha önce elendiyse kabul edilmez.
+Profil başkasınınsa 404. İlk düello kaydından sonra `POST /oneriler` 409 verir (liste kilitlenir).
+
+**`POST /secim`**
+```json
+// istek: zorluk_modu gönderilmezse "orta"
+{ "proje_id": 12, "zorluk_modu": "orta" }
+// cevap (201)
+{
+  "secim_id": 3,
+  "proje_id": 12,
+  "zorluk_modu": "orta",
+  "adimlar": [ { "sira": 1, "baslik": "...", "aciklama": "...", "tamamlandi": false, "tamamlanma_tarihi": null }, "... 12 tane" ]
+}
+```
+- Proje başkasınınsa 404, `zorluk_modu` `kolay`/`orta`/`efsane` değilse 422.
+- Proje havuzdansa `havuz_projeleri.secilme_sayisi` 1 artar (çok seçilen proje sonraki öğrencilerde geri plana düşer).
+- Haritayı Gemini üretir. Gemini cevap vermezse ya da günlük hak dolduysa hata verilmez, projenin kendi adımlarından
+  12 adımlık yedek harita çıkar. Günlük hak sadece Gemini gerçekten cevap verdiyse 1 azalır.
+- Aynı proje ikinci kez seçilirse yeni kayıt açılmaz, var olan harita döner (`secilme_sayisi` tekrar artmaz).
+
+**`GET /harita/{secim_id}`**: cevap `POST /secim` ile aynı kalıp, adımlar `sira`'ya göre. Seçim başkasınınsa 404.
 
 **`PUT /harita/{secim_id}`**: istek `{ "sira": 4, "tamamlandi": true }`, cevap güncel harita.
+Tamamlanınca `tamamlanma_tarihi` yazılır, işaret kaldırılınca silinir. `sira` 1-12 değilse 422, seçim başkasınınsa 404.
+
+**`GET /surpriz/{profil_id}`**: cevap tek proje (bkz. 4. bölüm), `"surpriz": true`, `"duelloda": false`.
+- Sürpriz proje = "bunu hiç düşünmemiştin ama bak": öğrencinin profilindeki ilgi alanlarının **dışından**,
+  ama istemediği alanlardan da **olmayan** bir havuz projesi. Öneri listesindeki projeler tekrar çıkmaz.
+- Adaylar arasından süresine en çok sığanlar (yapılabilirlik, sonra özgünlük) öne alınır, ilk 15'ten biri rastgele seçilir.
+- Aynı profil için tekrar çağrılırsa aynı sürpriz döner. `POST /oneriler` listeyi yenilerse sürpriz de yenilenir.
+- Profil onaylanmamışsa 400, başkasınınsa 404, uygun proje yoksa 404. Gemini kullanmaz, günlük hak harcanmaz.
+- `GET /oneriler` sürpriz projeyi listeye katmaz.
 
 ## 3. Seçenek kodları
 
