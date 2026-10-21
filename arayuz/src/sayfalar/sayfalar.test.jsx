@@ -1,13 +1,12 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes, useParams } from 'react-router';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App.jsx';
 import { akisOku, akisYaz } from '../akis.js';
 import { SunucuHatasi } from '../api.js';
 import * as api from '../api.js';
 import { TASLAK_ANAHTARI } from './Anlat.jsx';
-import Oneriler from './Oneriler.jsx';
 
 // Sunucu yerine sahte cevaplar; jeton işlemleri gerçek kalır.
 vi.mock('../api.js', async (gercek) => ({
@@ -19,6 +18,7 @@ vi.mock('../api.js', async (gercek) => ({
   profilOnayla: vi.fn(),
   onerileriGetir: vi.fn(),
   onerileriUret: vi.fn(),
+  duelloKaydet: vi.fn(),
 }));
 
 const BOLUMLER = [
@@ -644,23 +644,6 @@ function oneriKartlari() {
   return [...document.querySelectorAll('ol.oneriler > li')];
 }
 
-// Düello ekranı henüz yok; "Düelloyu başlat"ın hangi adrese geçtiğini görmek için yerine bir başlık konur.
-function DuelloYeri() {
-  const { profilId } = useParams();
-  return <h1>Düello {profilId}</h1>;
-}
-
-function onerileriAc(state) {
-  return render(
-    <MemoryRouter initialEntries={[{ pathname: '/oneriler/5', state }]}>
-      <Routes>
-        <Route path="/oneriler/:profilId" element={<Oneriler />} />
-        <Route path="/duello/:profilId" element={<DuelloYeri />} />
-      </Routes>
-    </MemoryRouter>,
-  );
-}
-
 describe('Öneriler', () => {
   beforeEach(() => {
     api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' });
@@ -714,7 +697,10 @@ describe('Öneriler', () => {
     expect(within(ilk).getByRole('img', { name: 'Puan 99' })).toBeInTheDocument();
     expect(ikinci).toHaveTextContent('✨ Sana özel');
     expect(ikinci).toHaveTextContent('Zor · 8 hafta');
-    expect(oneriKartlari()[9]).toHaveTextContent('Elendi');
+    // Düelloya girmeyen 9. ve 10. proje "Yedek"
+    expect(oneriKartlari()[8]).toHaveTextContent('Yedek');
+    expect(oneriKartlari()[9]).toHaveTextContent('Yedek');
+    expect(oneriKartlari()[7]).toHaveTextContent('Düelloda');
   });
 
   it('karta dokununca ayrıntı açılır, tekrar dokununca kapanır', async () => {
@@ -757,18 +743,18 @@ describe('Öneriler', () => {
     expect(api.onerileriUret).not.toHaveBeenCalled();
   });
 
-  it('"Düelloyu başlat" düello ekranına geçer', async () => {
+  it('"Düelloyu başlat" düello ekranını açar', async () => {
     akisYaz('oneriler', { profilId: '5', liste: ONERILER });
-    onerileriAc();
+    ac('/oneriler/5');
     await userEvent.click(screen.getByRole('button', { name: 'Düelloyu başlat' }));
-    expect(screen.getByRole('heading', { name: 'Düello 5' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
   });
 
   it('hata olursa mesaj gösterir; "Tekrar dene" yeniden ister', async () => {
     vi.mocked(api.onerileriUret)
       .mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0))
       .mockResolvedValueOnce(ONERILER);
-    onerileriAc({ yeniUret: true });
+    ac({ pathname: '/oneriler/5', state: { yeniUret: true } });
     expect(await screen.findByRole('heading', { name: 'Projeler getirilemedi' })).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Sunucuya ulaşılamıyor.');
     await userEvent.click(screen.getByRole('button', { name: 'Tekrar dene' }));
@@ -789,5 +775,153 @@ describe('Öneriler', () => {
     });
     ac('/oneriler/5');
     expect(await screen.findByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument();
+  });
+});
+
+// --- Düello ------------------------------------------------------------------
+
+// ONERILER'de puan sırası: Proje 1 (41), Kantin Sırası Tahmini (42), Proje 3 (43) … Proje 8 (48).
+const DUELLO_IDLERI = [41, 42, 43, 44, 45, 46, 47, 48];
+
+function ilerleme() {
+  return Number(screen.getByRole('progressbar', { name: 'Düello' }).getAttribute('aria-valuenow'));
+}
+
+async function sec(baslik) {
+  await userEvent.click(screen.getByRole('button', { name: `Bunu seç: ${baslik}` }));
+}
+
+describe('Düello', () => {
+  beforeEach(() => {
+    api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' });
+    akisYaz('profil', { ...PROFIL, onaylandi: true });
+    akisYaz('oneriler', { profilId: '5', liste: ONERILER });
+    vi.mocked(api.duelloKaydet).mockImplementation(async (secim) => ({ id: 1, ...secim }));
+  });
+
+  it('profil yoksa "Seni tanıyalım"a döner', async () => {
+    sessionStorage.clear();
+    ac('/duello/5');
+    expect(await screen.findByRole('heading', { name: 'Seni tanıyalım' })).toBeInTheDocument();
+  });
+
+  it('ilk maç çeyrek final 1/4: en yüksek puanlı proje ile 8. proje', () => {
+    ac('/duello/5');
+    expect(screen.getByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Proje 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Proje 8' })).toBeInTheDocument();
+    expect(ilerleme()).toBe(0);
+  });
+
+  it('seçim kaydedilir (POST /duello kalıbı) ve sonraki maça geçilir', async () => {
+    ac('/duello/5');
+    await sec('Proje 8');
+
+    expect(await screen.findByRole('heading', { name: 'Çeyrek final 2/4' })).toBeInTheDocument();
+    expect(api.duelloKaydet).toHaveBeenCalledWith({ profil_id: 5, kazanan_proje_id: 48, kaybeden_proje_id: 41, tur: 'ceyrek' });
+    expect(screen.getByRole('heading', { name: 'Proje 4' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Proje 5' })).toBeInTheDocument();
+    expect(ilerleme()).toBe(1);
+    expect(akisOku('duello')).toEqual({ profilId: '5', projeler: DUELLO_IDLERI, kazananlar: [48] });
+  });
+
+  it('7 seçim: 4 çeyrek final, 2 yarı final, final; sonunda şampiyon görünür', async () => {
+    ac('/duello/5');
+    await sec('Proje 1');
+    await sec('Proje 4');
+    await sec('Kantin Sırası Tahmini');
+    await sec('Proje 3');
+
+    expect(await screen.findByRole('heading', { name: 'Yarı final 1/2' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Proje 1' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Proje 4' })).toBeInTheDocument();
+    await sec('Proje 1');
+    expect(await screen.findByRole('heading', { name: 'Yarı final 2/2' })).toBeInTheDocument();
+    await sec('Kantin Sırası Tahmini');
+
+    expect(await screen.findByRole('heading', { name: 'Final' })).toBeInTheDocument();
+    await sec('Kantin Sırası Tahmini');
+
+    expect(await screen.findByRole('heading', { name: 'Şampiyon belli oldu' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Kantin Sırası Tahmini' })).toBeInTheDocument();
+    expect(screen.getByText('Şampiyon')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Bunu seç/ })).not.toBeInTheDocument();
+    expect(ilerleme()).toBe(7);
+    expect(api.duelloKaydet.mock.calls.map(([s]) => s.tur)).toEqual(['ceyrek', 'ceyrek', 'ceyrek', 'ceyrek', 'yari', 'yari', 'final']);
+    expect(api.duelloKaydet).toHaveBeenLastCalledWith({ profil_id: 5, kazanan_proje_id: 42, kaybeden_proje_id: 41, tur: 'final' });
+  });
+
+  it('sayfa yeniden açılınca kaldığı maçtan devam eder', () => {
+    akisYaz('duello', { profilId: '5', projeler: DUELLO_IDLERI, kazananlar: [41, 44] });
+    ac('/duello/5');
+    expect(screen.getByRole('heading', { name: 'Çeyrek final 3/4' })).toBeInTheDocument();
+    expect(ilerleme()).toBe(2);
+  });
+
+  it('öneriler değiştiyse eski düello sayılmaz, baştan başlar', () => {
+    akisYaz('duello', { profilId: '5', projeler: [1, 2, 3, 4, 5, 6, 7, 8], kazananlar: [1, 4] });
+    ac('/duello/5');
+    expect(screen.getByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+  });
+
+  it('öneriler tarayıcıda yoksa kayıtlı liste sunucudan istenir', async () => {
+    akisYaz('oneriler', null);
+    vi.mocked(api.onerileriGetir).mockResolvedValue(ONERILER);
+    ac('/duello/5');
+    expect(await screen.findByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+    expect(api.onerileriGetir).toHaveBeenCalledWith('5');
+  });
+
+  it('henüz öneri yoksa öneriler ekranına gider', async () => {
+    akisYaz('oneriler', null);
+    vi.mocked(api.onerileriGetir).mockResolvedValue([]);
+    vi.mocked(api.onerileriUret).mockReturnValue(new Promise(() => {}));
+    ac('/duello/5');
+    expect(await screen.findByRole('heading', { name: 'Projelerin hazırlanıyor' })).toBeInTheDocument();
+  });
+
+  it('"İçerik" projenin ayrıntısını açar', async () => {
+    ac('/duello/5');
+    const [dugme] = screen.getAllByRole('button', { name: 'İçerik' });
+    await userEvent.click(dugme);
+    expect(dugme).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Proje 1 ne yapar')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'İçeriği gizle' })).toBeInTheDocument();
+  });
+
+  it('kaydedilirken iki kart da kilitlenir, ikinci kez gönderilemez', async () => {
+    vi.mocked(api.duelloKaydet).mockReturnValue(new Promise(() => {}));
+    ac('/duello/5');
+    await sec('Proje 1');
+    expect(screen.getByRole('button', { name: 'Bunu seç: Proje 1' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Bunu seç: Proje 8' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Bunu seç: Proje 8' }));
+    expect(api.duelloKaydet).toHaveBeenCalledTimes(1);
+  });
+
+  it('kayıt hata verirse mesajı gösterir, aynı maçta kalır', async () => {
+    vi.mocked(api.duelloKaydet).mockRejectedValueOnce(new SunucuHatasi('Sunucuya ulaşılamıyor.', 0));
+    ac('/duello/5');
+    await sec('Proje 1');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sunucuya ulaşılamıyor.');
+    expect(screen.getByRole('heading', { name: 'Çeyrek final 1/4' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bunu seç: Proje 1' })).toBeEnabled();
+    expect(akisOku('duello')).toBeNull();
+  });
+
+  it('oturum düştüyse (401) girişe gönderir', async () => {
+    vi.mocked(api.duelloKaydet).mockImplementation(async () => {
+      api.cikisYap();
+      throw new SunucuHatasi('Oturumun süresi doldu, tekrar giriş yap.', 401);
+    });
+    ac('/duello/5');
+    await sec('Proje 1');
+    expect(await screen.findByRole('heading', { name: 'Giriş yap' })).toBeInTheDocument();
+  });
+
+  it('geri düğmesi öneriler ekranına döner', async () => {
+    ac('/duello/5');
+    await userEvent.click(screen.getByRole('button', { name: '← Geri' }));
+    expect(await screen.findByRole('heading', { name: 'Sana uygun 10 proje' })).toBeInTheDocument();
   });
 });

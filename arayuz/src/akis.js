@@ -1,10 +1,11 @@
-// Öğrencinin "Seni tanıyalım"dan önerilere kadar girdikleri ve sunucudan gelenler. Sayfa
+// Öğrencinin "Seni tanıyalım"dan düelloya kadar girdikleri ve sunucudan gelenler. Sayfa
 // yenilense de kaybolmasın diye sekme kapanana kadar tarayıcıda saklanır; çıkış yapınca silinir.
 
 export const ANAHTARLAR = {
   anlat: 'konu_kartlari_anlat',
   profil: 'konu_kartlari_profil',
   oneriler: 'konu_kartlari_oneriler',
+  duello: 'konu_kartlari_duello',
 };
 
 export function akisOku(ad) {

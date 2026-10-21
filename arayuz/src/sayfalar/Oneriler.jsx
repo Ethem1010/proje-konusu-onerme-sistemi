@@ -4,6 +4,7 @@ import { akisOku, akisYaz } from '../akis.js';
 import { onerileriGetir, onerileriUret, oturumDustu } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
 import Etiket from '../bilesenler/Etiket.jsx';
+import ProjeAyrintisi from '../bilesenler/ProjeAyrintisi.jsx';
 import PuanHalkasi from '../bilesenler/PuanHalkasi.jsx';
 import UstCubuk from '../bilesenler/UstCubuk.jsx';
 import { alanBul, ZORLUKLAR } from '../secenekler.js';
@@ -30,47 +31,19 @@ function onerileriYukle(profilId, yeniUret) {
   return bekleyenler.get(profilId);
 }
 
-function Puan({ ad, deger }) {
-  return (
-    <div className="meter">
-      <span>{ad}</span>
-      <span className="track">
-        <i style={{ width: `${deger}%` }} />
-      </span>
-      <span>{deger}</span>
-    </div>
-  );
-}
-
-// Sunucu bazı bilgileri boş gönderebilir; boş olan bölüm hiç gösterilmez.
-function Bilgi({ baslik, children }) {
-  if (!children) return null;
-  return (
-    <div className="kv">
-      <h3>{baslik}</h3>
-      <p>{children}</p>
-    </div>
-  );
-}
-
 function OneriKarti({ proje, sira, acik, onAc }) {
   const renk = alanBul(proje.alan)?.renk;
   const detayId = `oneri-detay-${proje.id}`;
-  const puanlar = [
-    ['Sana uyumu', proje.puan_uyum],
-    ['Yapılabilirliği', proje.puan_yapilabilirlik],
-    ['Özgünlüğü', proje.puan_ozgunluk],
-  ].filter(([, deger]) => deger != null);
 
   return (
-    <li className={proje.duelloda ? 'oneri' : 'oneri elendi'} style={renk ? { '--fc': `var(--c${renk})` } : undefined}>
+    <li className={proje.duelloda ? 'oneri' : 'oneri yedek'} style={renk ? { '--fc': `var(--c${renk})` } : undefined}>
       <button type="button" className="oneri-ust" aria-expanded={acik} aria-controls={detayId} onClick={onAc}>
         <span className="oneri-sira">{sira}</span>
         <span className="oneri-govde">
           <span className="oneri-etiketler">
             <Etiket renk={renk}>{proje.alan_adi}</Etiket>
             {proje.kaynak === 'gemini' && <span className="ozel">✨ Sana özel</span>}
-            <span className={proje.duelloda ? 'pill in' : 'pill no'}>{proje.duelloda ? 'Düelloda' : 'Elendi'}</span>
+            <span className={proje.duelloda ? 'pill in' : 'pill no'}>{proje.duelloda ? 'Düelloda' : 'Yedek'}</span>
           </span>
           <b className="oneri-baslik">{proje.baslik}</b>
           <span className="muted small">
@@ -80,37 +53,7 @@ function OneriKarti({ proje, sira, acik, onAc }) {
         <PuanHalkasi puan={proje.puan_toplam ?? 0} />
       </button>
 
-      {acik && (
-        <div className="oneri-detay" id={detayId}>
-          <Bilgi baslik="Ne yapılacak">{proje.ne}</Bilgi>
-          <Bilgi baslik="Kimin işine yarar">{proje.kim}</Bilgi>
-          <Bilgi baslik="Sonunda ne çıkar">{proje.cikti}</Bilgi>
-          {proje.adimlar?.length > 0 && (
-            <div className="kv">
-              <h3>Nasıl yapılır</h3>
-              <ol className="adimlar">
-                {proje.adimlar.map((a) => (
-                  <li key={a}>{a}</li>
-                ))}
-              </ol>
-            </div>
-          )}
-          {(proje.kolay || proje.efsane) && (
-            <div className="iki">
-              <Bilgi baslik="Kolay mod">{proje.kolay}</Bilgi>
-              <Bilgi baslik="Efsane mod">{proje.efsane}</Bilgi>
-            </div>
-          )}
-          {puanlar.length > 0 && (
-            <div className="kv">
-              <h3>Puan</h3>
-              {puanlar.map(([ad, deger]) => (
-                <Puan key={ad} ad={ad} deger={deger} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {acik && <ProjeAyrintisi proje={proje} id={detayId} className="oneri-detay" />}
     </li>
   );
 }
