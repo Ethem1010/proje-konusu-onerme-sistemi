@@ -82,6 +82,13 @@ class GeminiTesti(unittest.TestCase):
         self.assertEqual(len(projeler), 10)
         self.assertTrue(all(p["kaynak"] == "havuz" for p in projeler))
 
+    def test_beklenmedik_hatada_da_havuzla_devam(self):
+        with mock.patch("oneri_motoru.uretim.sor", side_effect=RuntimeError("tuhaf hata")), \
+                self.assertLogs("oneri_motoru.siralama", level="ERROR"):
+            projeler = siralama.oner(PROFIL, rastgele=random.Random(1))
+        self.assertEqual(len(projeler), 10)
+        self.assertTrue(all(p["kaynak"] == "havuz" for p in projeler))
+
     def test_yedek_harita_12_adim(self):
         harita = yedek_harita({"adimlar": ["A", "B", "C", "D"]})
         self.assertEqual([a["sira"] for a in harita], list(range(1, 13)))

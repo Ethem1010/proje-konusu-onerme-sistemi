@@ -51,8 +51,8 @@ def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2):
               Python sözlüğü/listesi olarak döner. Verilmezse düz metin döner.
     sicaklik: 0'a yakınsa hep benzer cevap, 1'e yakınsa daha yaratıcı cevap
 
-    Geçici bir hata ya da bozuk JSON gelirse birkaç saniye bekleyip tekrar dener.
-    Yine olmazsa YapayZekaHatasi fırlatır.
+    Geçici bir hata, ağ sorunu ya da bozuk JSON gelirse birkaç saniye bekleyip tekrar dener.
+    Yine olmazsa YapayZekaHatasi fırlatır. Yani bu fonksiyondan YapayZekaHatasi dışında hata çıkmaz.
     """
     ayar = types.GenerateContentConfig(
         system_instruction=sistem,
@@ -73,6 +73,12 @@ def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2):
                 break  # anahtar yanlış, model adı yanlış gibi: tekrar denemenin faydası yok
         except json.JSONDecodeError as hata:
             son_hata = hata  # cevap kalıba uymadı, bir kez daha iste
+        except YapayZekaHatasi:
+            raise  # API anahtarı yok: tekrar denemenin faydası yok
+        except Exception as hata:
+            # İnternet koptu, bağlantı zaman aşımına uğradı gibi ağ sorunları (httpx hataları).
+            # Bunlar da geçicidir, bir kez daha denenir.
+            son_hata = hata
         if deneme < deneme_sayisi:
             time.sleep(BEKLEME_SANIYE)
 
