@@ -6,10 +6,26 @@ Profil çıkarma ve sıralama bizim kodumuzda; Gemini sadece burada, iki iş iç
 
 Gemini cevap vermezse YapayZekaHatasi fırlar. Sıralama bunu yakalar ve sadece havuzla devam eder.
 """
+import os
+
 from .etiketler import ALAN_ADI, ALAN_KODLARI, BECERI_ADLARI
 from .yapay_zeka import YapayZekaHatasi, sor
 
 YENI_PROJE_SAYISI = 5
+
+# Gemini cevap vermeden önce ne kadar düşünsün? Varsayılan "düşünme" çok yavaş (cevap başına onlarca saniye).
+# "low" öğrenciyi daha az bekletir. .env'de GEMINI_DUSUNME=minimal / low / medium / high ile değişir.
+DUSUNME = os.getenv("GEMINI_DUSUNME", "low")
+
+
+def _sor(komut, **ayar):
+    """sor() ile aynı, ama düşünme seviyesini ekler. Model bu ayarı desteklemezse ayarsız tekrar sorar."""
+    try:
+        return sor(komut, dusunme=DUSUNME, **ayar)
+    except YapayZekaHatasi as hata:
+        if DUSUNME and "think" in str(hata).lower():
+            return sor(komut, **ayar)
+        raise
 
 _PROJE_OZELLIKLERI = {
     "baslik": {"type": "string", "description": "Kısa, akılda kalıcı başlık"},
@@ -118,7 +134,7 @@ def yeni_projeler(profil, adet=YENI_PROJE_SAYISI, haric_basliklar=()):
         f"kesinlikle olmasın. Süresine ve ekibine sığsın. Becerilerinden yararlansın ama yeni bir şey de öğretsin. "
         f"Şu projelerle aynı ya da çok benzer olmasın: {haric or 'yok'}"
     )
-    cevap = sor(komut, sistem=_SISTEM, sema=PROJE_SEMASI, sicaklik=0.9)
+    cevap = _sor(komut, sistem=_SISTEM, sema=PROJE_SEMASI, sicaklik=0.9)
     temiz = [p for p in (_temizle(p, profil) for p in cevap.get("projeler", [])) if p]
     if not temiz:
         raise YapayZekaHatasi("Gemini'nin ürettiği projelerin hiçbiri kalıba uymadı.")
@@ -146,7 +162,7 @@ def gorev_haritasi(proje, zorluk_modu="orta", profil=None):
         "hazırlık, son adım sunum/teslim olsun. Öğrencinin bildiği becerileri kullan, bilmediklerini "
         "öğrenmesi için adım koy."
     )
-    cevap = sor(komut, sistem=_SISTEM, sema=HARITA_SEMASI, sicaklik=0.4)
+    cevap = _sor(komut, sistem=_SISTEM, sema=HARITA_SEMASI, sicaklik=0.4)
     adimlar = cevap.get("adimlar", [])[:12]
     if len(adimlar) < 12:
         raise YapayZekaHatasi("Görev haritası 12 adımdan kısa geldi.")
