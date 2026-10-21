@@ -1,6 +1,7 @@
 """Öneri motoru testleri. Ana klasörden çalıştır:  python -m unittest"""
 import unittest
 
+from oneri_motoru.egitim import tekrarlari_at
 from oneri_motoru.etiketler import ALAN_KODLARI, beceri_bul, sade, turkce_kucuk
 from oneri_motoru.model import ProfilModeli, _on_isle, olumlu_kisim
 from oneri_motoru.profil import bilinen_beceriler
@@ -55,6 +56,14 @@ class OlumsuzlukTesti(unittest.TestCase):
     def test_sevmek_istemek_olumsuz_degil(self):
         for metin in ("oyun yapmayı sevmek güzel", "oyun yapmak istemek"):
             self.assertNotIn("olmz_", _on_isle(metin), metin)
+
+
+class TekrarTesti(unittest.TestCase):
+    def test_tekrar_ve_test_sizintisi_atilir(self):
+        m = lambda yazi: {"metin": yazi, "etiketler": {}, "beceriler": []}
+        veri = [m("oyun yapcam"), m("Oyun  yapcam"), m("web istiyorum"), m("chatbot olsun")]
+        temiz = tekrarlari_at(veri, test=[m("chatbot olsun")])
+        self.assertEqual([v["metin"] for v in temiz], ["oyun yapcam", "web istiyorum"])
 
 
 class VeriTesti(unittest.TestCase):
