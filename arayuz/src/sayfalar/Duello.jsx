@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import { akisOku, akisYaz } from '../akis.js';
-import { duelloKaydet, onerileriGetir, oturumDustu } from '../api.js';
+import { duelloKaydet, duellolariGetir, onerileriGetir, oturumDustu } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
 import Etiket from '../bilesenler/Etiket.jsx';
 import ProjeAyrintisi from '../bilesenler/ProjeAyrintisi.jsx';
@@ -9,6 +9,7 @@ import PuanHalkasi from '../bilesenler/PuanHalkasi.jsx';
 import UstCubuk from '../bilesenler/UstCubuk.jsx';
 import { duelloProjeleri, MAC_SAYISI, maclar, sampiyon, siradakiMac, TURLAR, turAdi } from '../duello.js';
 import { alanBul } from '../secenekler.js';
+import Bekleme from './Bekleme.jsx';
 
 // Seçilen kart büyür, diğeri kaybolur (demodaki gibi); "hareketi azalt" seçenlerde beklenmez.
 const ANIMASYON = 330; // ms
@@ -16,12 +17,6 @@ function hareketsiz() {
   return !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 const bekle = (ms) => new Promise((cozum) => setTimeout(cozum, ms));
-
-// Tarayıcıda saklı ilerleme, ancak aynı profilin aynı 8 projesine aitse geçerli.
-function kayitliKazananlar(kayit, profilId, projeler) {
-  const ayni = kayit?.profilId === profilId && kayit.projeler?.join() === projeler.map((p) => p.id).join();
-  return ayni ? kayit.kazananlar : [];
-}
 
 function ProjeKarti({ proje, icerik, onIcerik, sampiyonMu, secildi, kaybetti, kilitli, onSec }) {
   const renk = alanBul(proje.alan)?.renk;
@@ -56,28 +51,27 @@ function ProjeKarti({ proje, icerik, onIcerik, sampiyonMu, secildi, kaybetti, ki
 export default function Duello() {
   const git = useNavigate();
   const { profilId } = useParams();
-  const profil = akisOku('profil');
-  const profilUygun = profil && String(profil.id) === profilId;
   const kayitliOneriler = akisOku('oneriler');
 
   const [liste, setListe] = useState(() => (kayitliOneriler?.profilId === profilId ? kayitliOneriler.liste : null));
-  const [kayit, setKayit] = useState(() => akisOku('duello'));
-  const [listeHatasi, setListeHatasi] = useState('');
+  const [kazananlar, setKazananlar] = useState(null); // oynanan maçların kazananları; null: yükleniyor
+  const [yuklemeHatasi, setYuklemeHatasi] = useState('');
   const [deneme, setDeneme] = useState(0);
   const [hata, setHata] = useState('');
   const [secilen, setSecilen] = useState(null); // seçimi kaydedilen projenin id'si
   const [acikId, setAcikId] = useState(null); // içeriği açık kartın projesi
   const icerikDegistir = (id) => setAcikId((a) => (a === id ? null : id));
 
-  // Öneriler tarayıcıda yoksa (ör. sayfa başka sekmede açıldı) kayıtlı liste sunucudan istenir.
+  // Oynanan maçlar sunucudan gelir (sayfa yenilense ya da başka sekmede açılsa da kaldığı yerden).
+  // Öneriler tarayıcıda yoksa onlar da sunucudan istenir. Profil başkasınınsa sunucu 404 verir.
   useEffect(() => {
-    if (liste || !profilUygun) return undefined;
     let iptal = false;
-    onerileriGetir(profilId)
-      .then((gelen) => {
+    Promise.all([liste ?? onerileriGetir(profilId), duellolariGetir(profilId)])
+      .then(([gelenListe, oynananlar]) => {
         if (iptal) return;
-        if (gelen.length > 0) akisYaz('oneriler', { profilId, liste: gelen });
-        setListe(gelen);
+        if (!liste && gelenListe.length > 0) akisYaz('oneriler', { profilId, liste: gelenListe });
+        setListe(gelenListe);
+        setKazananlar(oynananlar.map((m) => m.kazanan_proje_id));
       })
       .catch((hataNesnesi) => {
         if (iptal) return;
@@ -85,45 +79,27 @@ export default function Duello() {
           git('/giris', { replace: true, state: { mesaj: hataNesnesi.message } });
           return;
         }
-        setListeHatasi(hataNesnesi.message);
+        setYuklemeHatasi(hataNesnesi.message);
       });
     return () => {
       iptal = true;
     };
   }, [deneme]);
 
-  if (!profilUygun) return <Navigate to="/anlat" replace />;
-
-  if (!liste) {
+  if (!liste || !kazananlar) {
     return (
-      <>
-        <UstCubuk adim="Düello" geri={`/oneriler/${profilId}`} />
-        <main className="wrap">
-          <section className="scr">
-            {listeHatasi ? (
-              <>
-                <p className="err" role="alert">
-                  Projeler getirilemedi. {listeHatasi}
-                </p>
-                <div className="row">
-                  <Dugme
-                    onClick={() => {
-                      setListeHatasi('');
-                      setDeneme((d) => d + 1);
-                    }}
-                  >
-                    Tekrar dene
-                  </Dugme>
-                </div>
-              </>
-            ) : (
-              <p className="muted" role="status">
-                Projeler yükleniyor…
-              </p>
-            )}
-          </section>
-        </main>
-      </>
+      <Bekleme
+        adim="Düello"
+        baslik="Düello hazırlanıyor"
+        hataBasligi="Düello açılamadı"
+        hata={yuklemeHatasi}
+        tekrarDene={() => {
+          setYuklemeHatasi('');
+          setDeneme((d) => d + 1);
+        }}
+        geriDon={() => git(`/oneriler/${profilId}`)}
+        geriEtiketi="Önerilere dön"
+      />
     );
   }
 
@@ -131,7 +107,6 @@ export default function Duello() {
   // Henüz öneri yoksa ya da düelloya yetecek proje yoksa önce öneriler ekranı.
   if (projeler.length < 8) return <Navigate to={`/oneriler/${profilId}`} replace />;
 
-  const kazananlar = kayitliKazananlar(kayit, profilId, projeler);
   const tumMaclar = maclar(projeler, kazananlar);
   const sira = siradakiMac(tumMaclar);
   const kazanan = sampiyon(tumMaclar);
@@ -150,9 +125,7 @@ export default function Duello() {
         }),
         hareketsiz() ? null : bekle(ANIMASYON),
       ]);
-      const yeni = { profilId, projeler: projeler.map((p) => p.id), kazananlar: [...kazananlar, secilenProje.id] };
-      akisYaz('duello', yeni);
-      setKayit(yeni);
+      setKazananlar([...kazananlar, secilenProje.id]);
       setAcikId(null);
       window.scrollTo(0, 0);
     } catch (hataNesnesi) {
