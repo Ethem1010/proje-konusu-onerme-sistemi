@@ -6,6 +6,7 @@ import {
   bolumleriGetir,
   cikisYap,
   duelloKaydet,
+  duellolariGetir,
   girisYap,
   jetonuAl,
   jetonuKaydet,
@@ -13,6 +14,7 @@ import {
   onerileriGetir,
   onerileriUret,
   oturumDustu,
+  profilGetir,
   profilOlustur,
   profilOnayla,
 } from './api.js';
@@ -160,13 +162,29 @@ describe('api', () => {
     expect(fetchSahte.mock.calls[1][1].method).toBe('POST');
   });
 
-  it('düello seçimi anlaşılan kalıpta cevap verir (adres gelene kadar sahte, sunucuya gitmez)', async () => {
-    const fetchSahte = vi.fn();
-    vi.stubGlobal('fetch', fetchSahte);
+  it('düello seçimi jetonla POST /duello adresine gider', async () => {
+    jetonuKaydet({ erisim_jetonu: 'abc', ad: 'Ayşe' });
     const secim = { profil_id: 5, kazanan_proje_id: 48, kaybeden_proje_id: 41, tur: 'ceyrek' };
-    const cevap = await duelloKaydet(secim);
-    expect(cevap).toMatchObject(secim);
-    expect(Number.isInteger(cevap.id)).toBe(true);
-    expect(fetchSahte).not.toHaveBeenCalled();
+    const fetchSahte = vi.fn(() => sahteCevap(201, { id: 1, ...secim }));
+    vi.stubGlobal('fetch', fetchSahte);
+
+    expect(await duelloKaydet(secim)).toEqual({ id: 1, ...secim });
+    const [adres, ayar] = fetchSahte.mock.calls[0];
+    expect(adres).toBe(`${SUNUCU_ADRESI}/duello`);
+    expect(ayar.method).toBe('POST');
+    expect(ayar.headers.Authorization).toBe('Bearer abc');
+    expect(JSON.parse(ayar.body)).toEqual(secim);
+  });
+
+  it('oynanan düello maçları ve kayıtlı profil GET ile istenir', async () => {
+    const fetchSahte = vi.fn(() => sahteCevap(200, []));
+    vi.stubGlobal('fetch', fetchSahte);
+
+    await duellolariGetir(5);
+    await profilGetir(5);
+    expect(fetchSahte.mock.calls.map(([adres, ayar]) => [adres, ayar.method])).toEqual([
+      [`${SUNUCU_ADRESI}/duello/5`, 'GET'],
+      [`${SUNUCU_ADRESI}/profil/5`, 'GET'],
+    ]);
   });
 });

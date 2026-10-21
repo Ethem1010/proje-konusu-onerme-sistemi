@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { akisOku, akisSil, akisYaz } from '../akis.js';
-import { oturumDustu, profilOnayla } from '../api.js';
+import { oturumDustu, profilGetir, profilOnayla } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
 import Etiket from '../bilesenler/Etiket.jsx';
 import UstCubuk from '../bilesenler/UstCubuk.jsx';
 import { ALANLAR, alanBul, BECERILER, PUAN_EN_COK } from '../secenekler.js';
+import Bekleme from './Bekleme.jsx';
 
 const renkOf = (kod) => alanBul(kod)?.renk;
 const adOf = (kod) => alanBul(kod)?.ad ?? kod;
@@ -25,18 +26,67 @@ function EkleListesi({ etiket, secenekler, onEkle }) {
   );
 }
 
+// Profil "Seni tanıyalım"dan gelir ve tarayıcıda saklanır. Orada yoksa (ör. sayfa başka sekmede
+// açıldı) ya da adres başka bir profili gösteriyorsa sunucudan istenir.
 export default function Profil() {
   const git = useNavigate();
   const { id } = useParams();
-  const [profil] = useState(() => akisOku('profil'));
-  const [alanlar, setAlanlar] = useState(() => (profil?.alanlar ?? []).map((a) => ({ ...a, ad: a.ad ?? adOf(a.kod) })));
-  const [istemedikleri, setIstemedikleri] = useState(() => profil?.istemedikleri ?? []);
-  const [beceriler, setBeceriler] = useState(() => profil?.beceriler ?? []);
+  const [profil, setProfil] = useState(() => {
+    const saklanan = akisOku('profil');
+    return saklanan && String(saklanan.id) === id ? saklanan : null;
+  });
+  const [hata, setHata] = useState('');
+  const [deneme, setDeneme] = useState(0);
+
+  useEffect(() => {
+    if (profil) return undefined;
+    let iptal = false;
+    profilGetir(id)
+      .then((gelen) => {
+        if (iptal) return;
+        akisYaz('profil', gelen);
+        setProfil(gelen);
+      })
+      .catch((hataNesnesi) => {
+        if (iptal) return;
+        if (oturumDustu(hataNesnesi)) {
+          git('/giris', { replace: true, state: { mesaj: hataNesnesi.message } });
+          return;
+        }
+        setHata(hataNesnesi.message);
+      });
+    return () => {
+      iptal = true;
+    };
+  }, [deneme]);
+
+  if (!profil) {
+    return (
+      <Bekleme
+        adim="Anlat"
+        baslik="Profilin açılıyor"
+        hataBasligi="Profil açılamadı"
+        hata={hata}
+        tekrarDene={() => {
+          setHata('');
+          setDeneme((d) => d + 1);
+        }}
+        geriDon={() => git('/anlat')}
+        geriEtiketi="Seni tanıyalım'a dön"
+      />
+    );
+  }
+
+  return <ProfilFormu profil={profil} />;
+}
+
+function ProfilFormu({ profil }) {
+  const git = useNavigate();
+  const [alanlar, setAlanlar] = useState(() => profil.alanlar.map((a) => ({ ...a, ad: a.ad ?? adOf(a.kod) })));
+  const [istemedikleri, setIstemedikleri] = useState(() => profil.istemedikleri ?? []);
+  const [beceriler, setBeceriler] = useState(() => profil.beceriler ?? []);
   const [hata, setHata] = useState('');
   const [bekliyor, setBekliyor] = useState(false);
-
-  // Profil "Seni tanıyalım"dan gelir; adres başka bir profili gösteriyorsa oraya dönülür.
-  if (!profil || String(profil.id) !== id) return <Navigate to="/anlat" replace />;
 
   const kullanilan = new Set([...alanlar.map((a) => a.kod), ...istemedikleri]);
   const bosAlanlar = ALANLAR.filter((a) => !kullanilan.has(a.kod));
