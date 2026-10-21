@@ -3,8 +3,8 @@ import unittest
 
 from oneri_motoru.egitim import tekrarlari_at
 from oneri_motoru.etiketler import ALAN_KODLARI, beceri_bul, sade, turkce_kucuk
-from oneri_motoru.model import ProfilModeli, _on_isle, olumlu_kisim
-from oneri_motoru.profil import bilinen_beceriler
+from oneri_motoru.model import MODEL_DOSYASI, ProfilModeli, _on_isle, olumlu_kisim
+from oneri_motoru.profil import acikca_istemedikleri, bilinen_beceriler, profil_cikar
 from oneri_motoru.veri import metinleri_oku, projeleri_oku
 
 
@@ -36,6 +36,35 @@ class BilinenBeceriTesti(unittest.TestCase):
 
     def test_uzaktaki_olumsuzluk_beceriyi_silmez(self):
         self.assertEqual(bilinen_beceriler("elimde bi tek python var başka da pek bişey bilmiyorum"), ["Python"])
+
+
+class AcikIstememeTesti(unittest.TestCase):
+    def test_acik_istememe_bulunur(self):
+        self.assertEqual(acikca_istemedikleri("oyun yapmak istiyorum ama web işlerinden hiç hoşlanmam"), ["web"])
+        self.assertEqual(acikca_istemedikleri("siber güvenlik bana acayip sıkıcı geliyor"), ["siber_guvenlik"])
+        self.assertEqual(acikca_istemedikleri("mobil uygulamalardan nefret ediyorum"), ["mobil"])
+
+    def test_ilgi_alani_istemiyor_sayilmaz(self):
+        # Noktalamasız gerçek öğrenci metni: yapay zekâyı seviyor, kodlamaktan hoşlanmıyor
+        self.assertEqual(acikca_istemedikleri("Yapay zeka seviyorum Kodlamaktan hoşlanmıyorum"), [])
+
+    def test_istememek_anlatmayan_kaliplar(self):
+        for metin in (
+            "gömülü sistem bilmiyorum",
+            "arduino kullanmadım daha önce",
+            "oyun veya mobil fark etmez ikisi de olur",
+            "ya web ya yapay zeka arasında kaldım",
+            "yapay zeka kısmını da öğrenmem gerekebilir",
+            "görüntü işleme biliyorum demem ama öğrenmeye açığım",
+            "ağaç dikmek istemiyorum",
+        ):
+            self.assertEqual(acikca_istemedikleri(metin), [], metin)
+
+    @unittest.skipUnless(MODEL_DOSYASI.exists(), "model henüz eğitilmemiş (python -m oneri_motoru.egitim)")
+    def test_profilde_istemedigi_alan_olmaz(self):
+        profil = profil_cikar("unity ile oyun yapmak istiyorum ama web işlerinden hiç hoşlanmam")
+        self.assertIn("web", profil["istemedikleri"])
+        self.assertNotIn("web", [a["kod"] for a in profil["alanlar"]])
 
 
 class OlumsuzlukTesti(unittest.TestCase):

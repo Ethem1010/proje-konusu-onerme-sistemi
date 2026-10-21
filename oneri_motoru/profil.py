@@ -8,7 +8,7 @@ Denemek için ana klasörden:  python -m oneri_motoru.profil "buraya bir yazı"
 import re
 import sys
 
-from .etiketler import _DESENLER, ALAN_ADI, sade
+from .etiketler import _DESENLER, ALAN_ADI, alan_kelimeleri_bul, sade
 from .model import _OLUMSUZLUK, _PARCA_SINIRI, ProfilModeli
 
 ALAN_SAYISI = 5        # anlaşma belgesi: profilde tam 5 alan
@@ -55,6 +55,57 @@ def bilinen_beceriler(metin):
     return bulunan
 
 
+# Olumsuz kelimeden geriye doğru en fazla bu kadar kelimeye bakılır (Türkçede fiil sonda: "oyun hiç sevmem").
+GERI_BAKIS = 4
+# Bu kelimelerde durulur: "yapay zeka seviyorum, kodlamaktan hoşlanmıyorum" -> yapay zekâ istenmiyor sayılmaz.
+_OLUMLU_FIIL = re.compile(r"^(?:sev(?:iyo|erim)|isti?yo|cekiyo|ilgilen|sariyo|bayil|olur$|yap(?:ca|aca|mak))")
+# Olumsuz görünen ama "istemiyorum" demeyen kalıplar:
+#   "python bilmiyorum", "arduino kullanmadım" -> bilgi / deneyim, istememek değil
+_NOTR_OLUMSUZ = re.compile(r"^(?:bilm|kullanmad|yapmad|denemed|gormed|farketmez)")
+#   "öğrenmem gerek / lazım" -> ihtiyaç
+_SONRAKI_NOTR = re.compile(r"^(?:gerek|lazim)")
+#   "ikisi arasında kaldım" -> kararsızlık; "fark etmez" -> fark etmez
+_ONCEKI_NOTR = {"kaldim": "arasinda", "etmez": "fark"}
+#   "görüntü işleme biliyorum demem" -> bilgi hakkında
+_BILGI = re.compile(r"^(?:biliyo|bilir|bilgi)")
+
+
+def _notr_mu(kelimeler, i):
+    kelime = kelimeler[i]
+    if _NOTR_OLUMSUZ.match(kelime):
+        return True
+    if i + 1 < len(kelimeler) and _SONRAKI_NOTR.match(kelimeler[i + 1]):
+        return True
+    return i > 0 and _ONCEKI_NOTR.get(kelime) == kelimeler[i - 1]
+
+
+def acikca_istemedikleri(metin):
+    """Öğrencinin açıkça istemediğini yazdığı alanlar.
+
+    Model "istemiyorum" örneğini az gördüğü için "web işlerinden hiç hoşlanmam" gibi açık bir cümlede bile
+    emin olamayabiliyor; bu kural modelin üstüne eklenir. Alanın adı olumsuz kelimenin hemen önünde
+    (en fazla GERI_BAKIS kelime) geçmeli ve araya olumlu bir fiil girmemeli. "Python bilmiyorum",
+    "fark etmez", "öğrenmem lazım" gibi istememek anlatmayan kalıplar sayılmaz (_notr_mu).
+    """
+    sonuc = []
+    for parca in _PARCA_SINIRI.split(sade(metin)):
+        kelimeler = (parca or "").split()
+        for i, kelime in enumerate(kelimeler):
+            if not _OLUMSUZLUK.search(kelime) or _notr_mu(kelimeler, i):
+                continue
+            pencere = []
+            for onceki in reversed(kelimeler[max(0, i - GERI_BAKIS):i]):
+                if _OLUMLU_FIIL.match(onceki):
+                    break
+                pencere.insert(0, onceki)
+            if any(_BILGI.match(k) for k in pencere):
+                continue
+            for kod in alan_kelimeleri_bul(" ".join(pencere)):
+                if kod not in sonuc:
+                    sonuc.append(kod)
+    return sonuc
+
+
 def profil_cikar(metin):
     """Anlaşma belgesindeki profil kalıbı:
 
@@ -66,6 +117,7 @@ def profil_cikar(metin):
     """
     olasilik = _model_al().olasiliklar([metin])[0]
     istemedikleri = [k for k, o in olasilik.items() if o["istememe"] >= ISTEMEME_ESIGI and o["istememe"] > o["ilgi"]]
+    istemedikleri += [k for k in acikca_istemedikleri(metin) if k not in istemedikleri]
     adaylar = sorted(
         (k for k in olasilik if k not in istemedikleri),
         key=lambda k: olasilik[k]["ilgi"],
