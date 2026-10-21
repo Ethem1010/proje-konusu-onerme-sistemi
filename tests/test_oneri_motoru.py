@@ -1,8 +1,10 @@
 """Öneri motoru testleri. Ana klasörden çalıştır:  python -m unittest"""
 import unittest
 
+from oneri_motoru.egitim import tekrarlari_at
 from oneri_motoru.etiketler import ALAN_KODLARI, beceri_bul, sade, turkce_kucuk
-from oneri_motoru.model import ProfilModeli, _on_isle
+from oneri_motoru.model import ProfilModeli, _on_isle, olumlu_kisim
+from oneri_motoru.profil import bilinen_beceriler
 from oneri_motoru.veri import metinleri_oku, projeleri_oku
 
 
@@ -26,6 +28,16 @@ class BeceriTesti(unittest.TestCase):
         self.assertEqual(sade("Ağ Güvenliği ÇIKIŞ"), "ag guvenligi cikis")
 
 
+class BilinenBeceriTesti(unittest.TestCase):
+    def test_bilmedigi_beceri_sayilmaz(self):
+        self.assertEqual(bilinen_beceriler("C# ile çok çalıştım. Ama Python bilmiyorum."), ["C#"])
+        self.assertEqual(bilinen_beceriler("javayı hiç bilmiyorum ama python biliyorum"), ["Python"])
+        self.assertEqual(bilinen_beceriler("docker yok, linux biliyorum"), ["Linux"])
+
+    def test_uzaktaki_olumsuzluk_beceriyi_silmez(self):
+        self.assertEqual(bilinen_beceriler("elimde bi tek python var başka da pek bişey bilmiyorum"), ["Python"])
+
+
 class OlumsuzlukTesti(unittest.TestCase):
     def test_olumsuz_parca_isaretlenir(self):
         sonuc = _on_isle("unity ilgimi çekiyor, web istemiyorum")
@@ -36,9 +48,22 @@ class OlumsuzlukTesti(unittest.TestCase):
         for metin in ("web istemiyom", "webden sikildim", "webden sıkıldım", "web degil"):
             self.assertIn("olmz_web", _on_isle(metin), metin)
 
+    def test_parca_ozelligi_olumsuz_kismi_gormez(self):
+        # "siber" parçası olumsuz cümlede de geçiyor; parça özelliği onu görmemeli
+        self.assertEqual(olumlu_kisim("oyun yapcam, ama siber güvenlik sıkıcı geliyor"), "oyun yapcam")
+        self.assertEqual(olumlu_kisim("web istemiyorum"), "")
+
     def test_sevmek_istemek_olumsuz_degil(self):
         for metin in ("oyun yapmayı sevmek güzel", "oyun yapmak istemek"):
             self.assertNotIn("olmz_", _on_isle(metin), metin)
+
+
+class TekrarTesti(unittest.TestCase):
+    def test_tekrar_ve_test_sizintisi_atilir(self):
+        m = lambda yazi: {"metin": yazi, "etiketler": {}, "beceriler": []}
+        veri = [m("oyun yapcam"), m("Oyun  yapcam"), m("web istiyorum"), m("chatbot olsun")]
+        temiz = tekrarlari_at(veri, test=[m("chatbot olsun")])
+        self.assertEqual([v["metin"] for v in temiz], ["oyun yapcam", "web istiyorum"])
 
 
 class VeriTesti(unittest.TestCase):

@@ -6,6 +6,8 @@ Başka bir servise geçmek gerekirse sadece bu dosya değişir.
 Ayarlar ana klasördeki .env dosyasında:
     GEMINI_API_KEY=...            (zorunlu)
     GEMINI_MODEL=gemini-3.8-flash (isteğe bağlı, yazılmazsa bu kullanılır)
+    GEMINI_DUSUNME=low            (isteğe bağlı: minimal, low, medium, high. Gemini cevaplamadan önce
+                                   ne kadar "düşünsün"? Az düşünce daha hızlı cevap verir.)
 """
 import json
 import os
@@ -42,7 +44,17 @@ def _istemci_al():
     return _istemci
 
 
-def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2):
+def _dusunme_ayari(dusunme):
+    """'low' gibi bir seviyeyi Gemini ayarına çevirir. Kütüphane ya da seviye tanınmazsa None (varsayılan)."""
+    if not dusunme or dusunme.lower() not in ("minimal", "low", "medium", "high"):
+        return None
+    try:
+        return types.ThinkingConfig(thinking_level=dusunme.upper())
+    except Exception:
+        return None
+
+
+def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2, dusunme=None):
     """Yapay zekâya bir istek gönderir, cevabı döner.
 
     komut:    yapay zekâya gönderilecek metin
@@ -59,6 +71,7 @@ def sor(komut, *, sistem=None, sema=None, sicaklik=0.7, deneme_sayisi=2):
         temperature=sicaklik,
         response_mime_type="application/json" if sema else None,
         response_json_schema=sema,
+        thinking_config=_dusunme_ayari(dusunme),  # dusunme: "minimal", "low", "medium", "high" ya da None
     )
 
     son_hata = None
