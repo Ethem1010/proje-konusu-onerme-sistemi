@@ -1,4 +1,4 @@
-"""Profil adresleri: POST /profil, PUT /profil/{id}.
+"""Profil adresleri: POST /profil, GET /profil/{id}, PUT /profil/{id}.
 
 Profili Gemini değil, kendi eğittiğimiz model çıkarır (oneri_motoru/profil.py).
 Bu yüzden cevap anında gelir, kota yoktur.
@@ -154,6 +154,16 @@ def profil_olustur(
     oturum.add(profil)
     oturum.commit()
     return _cevap(profil)
+
+
+@router.get("/{profil_id}", response_model=ProfilCevabi)
+def profil_getir(
+    profil_id: int,
+    kullanici_id: int = Depends(aktif_kullanici_id),
+    oturum: Session = Depends(oturum_al),
+):
+    """Kayıtlı profili verir. Onay ekranı sayfa yenilenince profili buradan tekrar çeker."""
+    return _cevap(kullanicinin_profili(profil_id, kullanici_id, oturum))
 
 
 @router.put("/{profil_id}", response_model=ProfilCevabi)
