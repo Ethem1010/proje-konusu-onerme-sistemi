@@ -16,7 +16,7 @@ import argparse
 import random
 from pathlib import Path
 
-from .etiketler import ALAN_KODLARI
+from .etiketler import ALAN_KODLARI, sade
 from .model import MODEL_DOSYASI, OLUMLU, OLUMSUZ, ProfilModeli, _sinif
 from .profil import bilinen_beceriler
 from .veri import METINLER_DOSYASI, VERI_KLASORU, metinleri_oku
@@ -49,6 +49,30 @@ def capraz_dogrulama(veri, parca_sayisi=5, tohum=42):
             tahminler[i] = t
             olasiliklar[i] = p
     return gercekler, tahminler, olasiliklar
+
+
+def tekrarlari_at(veri, test=()):
+    """Aynı metin iki kez varsa birini atar; test setindeki bir metin eğitimde varsa onu da atar.
+
+    Tekrar eden metin ölçümü bozar: çapraz doğrulamada aynı metin hem eğitime hem denemeye düşer,
+    model "sınavda gördüğü soruyu" cevaplar ve sonuç olduğundan iyi çıkar.
+    """
+    testtekiler = {sade(" ".join(t["metin"].split())) for t in test}
+    gorulen, temiz, tekrar, sizinti = set(), [], 0, 0
+    for v in veri:
+        anahtar = sade(" ".join(v["metin"].split()))
+        if anahtar in testtekiler:
+            sizinti += 1
+        elif anahtar in gorulen:
+            tekrar += 1
+        else:
+            gorulen.add(anahtar)
+            temiz.append(v)
+    if tekrar:
+        print(f"UYARI: {tekrar} metin iki kez yazılmış, tekrarlar atlandı. Tabloda silinmeli.")
+    if sizinti:
+        print(f"UYARI: {sizinti} metin test setinde de var, eğitimden çıkarıldı.")
+    return temiz
 
 
 def test_et(model, test):
@@ -141,6 +165,8 @@ def main():
         okunan = metinleri_oku(dosya)
         print(f"{dosya.name}: {len(okunan)} metin")
         veri += okunan
+    test = metinleri_oku(secenek.test) if secenek.test.exists() else []
+    veri = tekrarlari_at(veri, test)
     if not veri:
         print("Hiç metin bulunamadı.")
         return
@@ -156,7 +182,6 @@ def main():
     model = ProfilModeli().egit([v["metin"] for v in veri], [v["etiketler"] for v in veri])
 
     if secenek.test.exists():
-        test = metinleri_oku(secenek.test)
         # Beceri ölçülmez: formda beceriler ayrı bir listeden işaretleniyor, metinde geçmeyebilir
         rapor_yaz(test, olcumler(*test_et(model, test)), taban=taban_isabet(veri, test),
                   baslik=f"Test seti: {secenek.test.name} (gerçek öğrenciler, eğitimde hiç kullanılmadı)")
