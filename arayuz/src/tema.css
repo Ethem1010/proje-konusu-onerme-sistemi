@@ -201,6 +201,12 @@ select.alan-sec { flex: 1 1 220px; min-width: 0; width: auto; max-width: 360px; 
   .oneri-ust { grid-template-columns: 20px 1fr auto; gap: 10px; padding: 12px; }
   .oneri-detay { padding: 14px 14px 16px; }
   .iki { grid-template-columns: 1fr; }
+  /* Puan çubukları telefonda sıkışmasın: ad ve sayı üstte, çubuk altta tam genişlikte */
+  .meter { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .meter .track { grid-column: 1 / -1; grid-row: 2; }
+  /* Profildeki puan noktaları parmakla rahat basılsın */
+  .dots { gap: 8px; }
+  .dot { width: 34px; height: 34px; }
 }
 
 /* Düello: üstte 7 parçalı ilerleme, altında yan yana iki kart (demodaki .duel / .dcard) */

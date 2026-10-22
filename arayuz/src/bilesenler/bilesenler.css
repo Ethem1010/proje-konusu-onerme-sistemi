@@ -73,6 +73,16 @@
   .giris-kart { padding: 26px 20px; }
   /* Telefonda geri, logo, tema ve "Çıkış" tek satıra sığsın */
   .bar-ic { padding: 12px 16px; column-gap: 8px; }
+  /* Adım şeridi telefona sığsın, öğrencinin olduğu adım hep görünsün: sadece o adımın adı yazılır,
+     diğerleri numarayla (adları ekran okuyucu için duruyor) */
+  .steps { gap: 6px; }
+  .steps li + li::before { width: 6px; }
+  .steps li:not(.on) > span:not(.no) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Çok dar telefonda (≤370 px) geri + logo + tema + "Çıkış" tek satıra sığmıyor: logo yazısı gizlenir */
+@media (max-width: 370px) {
+  .bar-ic .logo-yazi { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 }
 
 /* "Hareketi azalt" seçen kullanıcıda kart dönmez, anında açılır */
