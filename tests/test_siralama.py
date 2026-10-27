@@ -58,6 +58,28 @@ class SiralamaTesti(unittest.TestCase):
         for p in self.oner(sure_hafta=3, haftalik_saat=4, ekip=1):
             self.assertEqual(p["zorluk"], 1)
 
+    def test_bir_haftalik_ogrenciye_uzun_proje_gelmez(self):
+        # Havuzda 1-2 haftalık mini projeler var; 1 haftası olan öğrenciye 16 haftalık proje önerilmemeli
+        projeler = self.oner(sure_hafta=1, haftalik_saat=5, ekip=1)
+        self.assertEqual(len(projeler), 10)
+        self.assertLessEqual(max(p["hafta"] for p in projeler), 3)
+
+    def test_sigan_proje_azsa_en_yakin_sureli_projelerle_doldurulur(self):
+        havuz = [
+            {"baslik": f"Kısa {i}", "ne": "x", "alan": "oyun", "beceriler": [], "zorluk": 1, "hafta": 1, "adimlar": []}
+            for i in range(3)
+        ] + [
+            {"baslik": f"Orta {i}", "ne": "x", "alan": "oyun", "beceriler": [], "zorluk": 1, "hafta": 4, "adimlar": []}
+            for i in range(7)
+        ] + [
+            {"baslik": f"Uzun {i}", "ne": "x", "alan": "oyun", "beceriler": [], "zorluk": 3, "hafta": 16, "adimlar": []}
+            for i in range(10)
+        ]
+        profil = {**PROFIL, "sure_hafta": 1, "haftalik_saat": 5, "ekip": 1}
+        projeler = siralama.oner(profil, havuz=havuz, gemini_kullan=False, rastgele=random.Random(1))
+        self.assertEqual(len(projeler), 10)
+        self.assertFalse([p["baslik"] for p in projeler if p["baslik"].startswith("Uzun")])
+
     def test_cok_secilen_proje_geri_duser(self):
         proje = {"baslik": "x", "alan": "oyun", "secilme_sayisi": 0}
         self.assertGreater(siralama.ozgunluk_puani(proje), siralama.ozgunluk_puani({**proje, "secilme_sayisi": 20}))

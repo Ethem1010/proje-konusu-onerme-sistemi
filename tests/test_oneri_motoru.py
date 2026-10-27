@@ -44,6 +44,14 @@ class AcikIstememeTesti(unittest.TestCase):
         self.assertEqual(acikca_istemedikleri("siber güvenlik bana acayip sıkıcı geliyor"), ["siber_guvenlik"])
         self.assertEqual(acikca_istemedikleri("mobil uygulamalardan nefret ediyorum"), ["mobil"])
 
+    def test_aram_yok_ilgim_yok(self):
+        self.assertEqual(acikca_istemedikleri("Python biliyorum. Donanımla aram yok"), ["gomulu_iot"])
+        self.assertEqual(acikca_istemedikleri("yapay zekaya hiç ilgim yok"), ["yapay_zeka"])
+        self.assertEqual(acikca_istemedikleri("oyuna hevesim yok ama web ilgimi çekiyor"), ["oyun"])
+        # "yok" tek başına istememek değil: "docker yok" bildiği bir şey olmadığını anlatır
+        self.assertEqual(acikca_istemedikleri("docker yok, linux biliyorum"), [])
+        self.assertEqual(acikca_istemedikleri("web ile aram çok iyi"), [])
+
     def test_ilgi_alani_istemiyor_sayilmaz(self):
         # Noktalamasız gerçek öğrenci metni: yapay zekâyı seviyor, kodlamaktan hoşlanmıyor
         self.assertEqual(acikca_istemedikleri("Yapay zeka seviyorum Kodlamaktan hoşlanmıyorum"), [])
