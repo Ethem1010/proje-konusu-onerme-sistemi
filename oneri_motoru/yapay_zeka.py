@@ -117,4 +117,4 @@ def kullanilabilir_modeller():
     for model in _istemci_al().models.list():
         if "generateContent" in (model.supported_actions or []):
             adlar.append(model.name.removeprefix("models/"))
-    return sorted(adlar)
+    return sorted(adlar)
