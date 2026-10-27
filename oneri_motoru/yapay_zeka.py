@@ -5,7 +5,9 @@ Başka bir servise geçmek gerekirse sadece bu dosya değişir.
 
 Ayarlar ana klasördeki .env dosyasında:
     GEMINI_API_KEY=...            (zorunlu)
-    GEMINI_MODEL=gemini-3.8-flash (isteğe bağlı, yazılmazsa bu kullanılır)
+    GEMINI_MODEL=gemini-flash-lite-latest
+                                  (isteğe bağlı, yazılmazsa bu kullanılır. Hafif model seçtik: gemini-3.8-flash
+                                   ücretsiz katmanda çoğu zaman yoğun (503/504), hafif model 1-2 saniyede cevap veriyor.)
     GEMINI_DUSUNME=low            (isteğe bağlı: minimal, low, medium, high. Gemini cevaplamadan önce
                                    ne kadar "düşünsün"? Az düşünce daha hızlı cevap verir.)
     GEMINI_ZAMAN_ASIMI=30         (isteğe bağlı: bir isteğe en fazla kaç saniye beklensin. Google takılırsa
@@ -23,7 +25,7 @@ from google.genai import errors, types
 load_dotenv()
 
 API_ANAHTARI = os.getenv("GEMINI_API_KEY")
-MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 
 # Bu durum kodlarında sorun geçicidir (yoğunluk, kota, sunucu hatası); bir süre sonra tekrar denenebilir.
 GECICI_HATALAR = {429, 500, 502, 503, 504}
@@ -115,4 +117,4 @@ def kullanilabilir_modeller():
     for model in _istemci_al().models.list():
         if "generateContent" in (model.supported_actions or []):
             adlar.append(model.name.removeprefix("models/"))
-    return sorted(adlar)
+    return sorted(adlar)

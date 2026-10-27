@@ -172,16 +172,84 @@ def gorev_haritasi(proje, zorluk_modu="orta", profil=None):
     ]
 
 
-def yedek_harita(proje):
-    """Gemini cevap vermezse projenin kendi 4 adımından 12 adımlık basit bir harita çıkarır."""
-    adimlar = (list(proje.get("adimlar", [])) + ["Projeyi geliştir"] * 4)[:4]
-    liste = [("Hazırlık", "Gerekli araçları kur, benzer çalışmaları incele ve bir çalışma planı çıkar.")]
-    for adim in adimlar:
-        liste.append((adim, f"{adim} adımına başla, ilk çalışan hâlini çıkar."))
-        liste.append((f"{adim}: tamamla ve dene", "Eksikleri gider, küçük bir deneme yaparak çalıştığını göster."))
-    liste += [
-        ("Bütün parçaları birleştir ve test et", "Projeyi baştan sona çalıştırıp hataları düzelt."),
-        ("Belgeleri yaz", "Kurulum, kullanım ve sonuçları anlatan kısa bir rapor ya da README hazırla."),
-        ("Sun ve teslim et", "Kısa bir sunum ve canlı gösterim hazırla, projeyi teslim et."),
-    ]
+def _buyuk_harfle(metin):
+    """İlk harfi Türkçeye uygun büyütür: "istek" -> "İstek", "ılık" -> "Ilık"."""
+    metin = (metin or "").strip()
+    if not metin:
+        return metin
+    ilk = {"i": "İ", "ı": "I"}.get(metin[0], metin[0].upper())
+    return ilk + metin[1:]
+
+
+def _nokta(metin):
+    """Cümlenin sonunda nokta yoksa ekler."""
+    metin = (metin or "").strip()
+    return metin if not metin or metin[-1] in ".!?…" else metin + "."
+
+
+def _ilk_cumle(metin):
+    """Proje anlatımının ilk cümlesi ("Veri: ..." kısmı olmadan)."""
+    metin = " ".join((metin or "").split()).split(" Veri:")[0]
+    return metin.split(". ")[0].rstrip(".")
+
+
+def _kisalt(metin, uzunluk=160):
+    metin = " ".join((metin or "").split())
+    return metin if len(metin) <= uzunluk else metin[: uzunluk - 1].rsplit(" ", 1)[0] + "…"
+
+
+def yedek_harita(proje, zorluk_modu="orta", profil=None):
+    """Gemini cevap vermezse projenin kendi bilgilerinden 12 adımlık bir harita çıkarır.
+
+    Projenin 4 adımı, gereken becerileri, ne çıkacağı ve seçilen zorluk modu kullanılır; öğrencinin
+    bilmediği beceriler için öğrenme adımı eklenir. Gemini'ye hiç bağlı değildir, hep 12 adım döner.
+    """
+    beceriler = [b for b in proje.get("beceriler") or [] if b]
+    bilinen = set((profil or {}).get("beceriler") or [])
+    eksik = [b for b in beceriler if b not in bilinen] if profil else []
+    hafta = proje.get("hafta")
+
+    liste = [(
+        "Projeyi tanı ve planla",
+        f"Ne yapacağını netleştir: {_nokta(_kisalt(_ilk_cumle(proje.get('ne')), 200) or proje.get('baslik', 'proje'))} "
+        + (f"{hafta} haftalık bir çalışma takvimi çıkar." if hafta else "Haftalık bir çalışma takvimi çıkar."),
+    )]
+    if eksik:
+        liste.append((
+            f"{', '.join(eksik[:3])} öğren",
+            "Bu projede gerekecek ama henüz bilmediğin konular. Kısa bir başlangıç eğitimi bitir, "
+            "küçük bir örnek yap ve ortamını kur.",
+        ))
+    else:
+        liste.append((
+            "Çalışma ortamını kur",
+            (f"Gereken araçları hazırla: {', '.join(beceriler)}. " if beceriler else "Gereken araçları hazırla. ")
+            + "Kodunu GitHub'da bir depoda tut.",
+        ))
+
+    adimlar = [_buyuk_harfle(a) for a in (proje.get("adimlar") or []) if a and a.strip()]
+    adimlar = (adimlar + ["Projeyi geliştir"] * 4)[:4]
+    baslangic = (
+        "Önce en basit hâlini yap; çalışan küçük bir parça yeterli.",
+        "İskeletini kur, ayrıntıları sonraya bırak.",
+        "Küçük bir parçayla başla, çalıştığını gördükten sonra büyüt.",
+        "İlk çalışan sürümü çıkar, sonra üzerine ekle.",
+    )
+    for i, adim in enumerate(adimlar):
+        arac = f"{beceriler[i % len(beceriler)]} ile çalışacaksın. " if beceriler else ""
+        liste.append((adim, arac + baslangic[i]))
+        liste.append((f"{adim}: geliştir ve dene", "Eksikleri tamamla, birkaç farklı durumla dene, çıkan hataları düzelt."))
+
+    if zorluk_modu == "kolay" and proje.get("kolay"):
+        liste.append(("Kapsamı sade tut", f"Kolay mod: {_nokta(_buyuk_harfle(proje['kolay']))} Fazlasını ekleme, biten bir proje daha değerli."))
+    elif zorluk_modu == "efsane" and proje.get("efsane"):
+        liste.append(("Efsane özelliği ekle", f"Efsane mod: {_nokta(_buyuk_harfle(proje['efsane']))}"))
+    else:
+        liste.append(("Parçaları birleştir ve test et", "Projeyi baştan sona çalıştır, gerçek bir kullanıcı gibi dene ve hataları düzelt."))
+
+    liste.append((
+        "Raporla, sun ve teslim et",
+        (f"Sonunda elinde olacak: {_nokta(_kisalt(proje['cikti'], 120))} " if proje.get("cikti") else "")
+        + "Son testleri yap, kısa bir rapor ya da README yaz, canlı gösterimli bir sunum hazırla.",
+    ))
     return [{"sira": i, "baslik": b[:150], "aciklama": a} for i, (b, a) in enumerate(liste, start=1)]

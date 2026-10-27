@@ -96,7 +96,7 @@ def _harita_uret(proje_sozlugu: dict, zorluk_modu: str, profil_sozlugu: dict, ge
         except Exception:
             # YapayZekaHatasi da, internet kopması gibi beklenmedik hatalar da buraya düşer
             logger.exception("Görev haritası Gemini ile üretilemedi, yedek harita kullanılıyor")
-    return uretim.yedek_harita(proje_sozlugu), False
+    return uretim.yedek_harita(proje_sozlugu, zorluk_modu, profil_sozlugu), False
 
 
 @router.post("/secim", response_model=HaritaCevabi, status_code=status.HTTP_201_CREATED)
@@ -137,6 +137,8 @@ def proje_sec(
         "hafta": proje.hafta,
         "kolay": proje.kolay,
         "efsane": proje.efsane,
+        "beceriler": proje.beceriler,
+        "cikti": proje.cikti,
     }
     adimlar, gemini_cevap_verdi = _harita_uret(
         proje_sozlugu,
