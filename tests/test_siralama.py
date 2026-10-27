@@ -93,6 +93,29 @@ class GeminiTesti(unittest.TestCase):
         harita = yedek_harita({"adimlar": ["A", "B", "C", "D"]})
         self.assertEqual([a["sira"] for a in harita], list(range(1, 13)))
 
+    def test_yedek_harita_her_durumda_12_adim(self):
+        for proje in ({}, {"adimlar": []}, {"adimlar": ["tek adım"]}, {"adimlar": list("ABCDEF")}):
+            for mod in ("kolay", "orta", "efsane"):
+                self.assertEqual(len(yedek_harita(proje, mod)), 12, (proje, mod))
+
+    def test_yedek_harita_projeye_ozel(self):
+        proje = {
+            "baslik": "Sanal Gerçeklikte İş Güvenliği", "ne": "VR ile iş güvenliği eğitimi",
+            "adimlar": ["eğitim senaryolarını belirle", "VR sahnesini kur", "ışıkları ayarla", "rapor ekle"],
+            "beceriler": ["Unity", "C#"], "hafta": 10, "cikti": "VR eğitim uygulaması",
+            "kolay": "tek senaryolu sürüm yap", "efsane": "canlı eğitim modu ekle",
+        }
+        harita = yedek_harita(proje, "efsane", {"beceriler": ["C#"]})
+        basliklar = [a["baslik"] for a in harita]
+        self.assertEqual(basliklar[1], "Unity öğren")                   # bilmediği beceri
+        self.assertEqual(basliklar[2], "Eğitim senaryolarını belirle")  # büyük harfle başlar
+        self.assertEqual(basliklar[6], "Işıkları ayarla")               # Türkçe ı -> I
+        self.assertIn("Canlı eğitim modu", harita[10]["aciklama"])      # efsane mod adımı
+        self.assertIn("VR eğitim uygulaması", harita[11]["aciklama"])
+        kolay = yedek_harita(proje, "kolay")
+        self.assertIn("Tek senaryolu", kolay[10]["aciklama"])
+        self.assertEqual(yedek_harita(proje, "orta")[10]["baslik"], "Parçaları birleştir ve test et")
+
 
 class DusunmeTesti(unittest.TestCase):
     def test_dusunme_ayari_desteklenmezse_ayarsiz_sorulur(self):
