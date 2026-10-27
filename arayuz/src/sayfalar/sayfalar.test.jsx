@@ -26,6 +26,7 @@ vi.mock('../api.js', async (gercek) => ({
   secimYap: vi.fn(),
   haritaGetir: vi.fn(),
   adimIsaretle: vi.fn(),
+  secimleriGetir: vi.fn(),
 }));
 
 const BOLUMLER = [
@@ -79,6 +80,7 @@ async function doldur({ bolum = '1', saat = '8', ekip = '3', tercih = 'uretmek',
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api.bolumleriGetir).mockResolvedValue(BOLUMLER);
+  vi.mocked(api.secimleriGetir).mockResolvedValue([]);
 });
 
 describe('Yönlendirme', () => {
@@ -188,6 +190,39 @@ describe('Kayıt', () => {
 
 describe('Seni tanıyalım (Anlat)', () => {
   beforeEach(() => api.jetonuKaydet({ erisim_jetonu: 'j', ad: 'Ayşe' }));
+
+  it('daha önce proje seçtiyse "Devam eden projelerin" görünür, "Haritaya git" haritayı açar', async () => {
+    vi.mocked(api.secimleriGetir).mockResolvedValue([
+      { secim_id: 3, proje_id: 42, baslik: 'Kampüs Oyunu', alan: 'oyun', zorluk_modu: 'efsane', tamamlanan: 3, toplam: 12 },
+    ]);
+    vi.mocked(api.haritaGetir).mockResolvedValue({ secim_id: 3, proje_id: 42, zorluk_modu: 'efsane', adimlar: [] });
+    vi.mocked(api.projeGetir).mockResolvedValue({ id: 42, baslik: 'Kampüs Oyunu' });
+    ac('/anlat');
+
+    const kutu = await screen.findByRole('region', { name: 'Devam eden projelerin' });
+    expect(kutu).toHaveTextContent('Kampüs Oyunu');
+    expect(kutu).toHaveTextContent('Efsane mod · 3/12 tamamlandı');
+    await userEvent.click(screen.getByRole('button', { name: 'Haritaya git' }));
+    await waitFor(() => expect(api.haritaGetir).toHaveBeenCalledWith('3'));
+  });
+
+  it('seçilmiş proje yoksa "Devam eden projelerin" görünmez', async () => {
+    ac('/anlat');
+    await waitFor(() => expect(screen.getByLabelText('Bölüm')).toBeEnabled());
+    expect(api.secimleriGetir).toHaveBeenCalled();
+    expect(screen.queryByRole('region', { name: 'Devam eden projelerin' })).not.toBeInTheDocument();
+  });
+
+  it('yazılanlar "Devam et"e basmadan da saklanır, sayfa yenilense de kaybolmaz', async () => {
+    const { unmount } = ac('/anlat');
+    await userEvent.type(screen.getByLabelText(/Neyi seviyorsun/), 'Unity biliyorum');
+    expect(JSON.parse(sessionStorage.getItem(TASLAK_ANAHTARI))).toMatchObject({ metin: 'Unity biliyorum' });
+    unmount();
+
+    ac('/anlat');
+    expect(screen.getByLabelText(/Neyi seviyorsun/)).toHaveValue('Unity biliyorum');
+    await waitFor(() => expect(screen.getByLabelText('Bölüm')).toBeEnabled());
+  });
 
   it('bölüm listesi sunucudan gelir, iki grupta ve en altta "Diğer"', async () => {
     ac('/anlat');

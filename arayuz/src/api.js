@@ -163,6 +163,12 @@ export function haritaGetir(secimId) {
   return istek(`/harita/${secimId}`, { jetonlu: true });
 }
 
+// GET /secimler → [{ secim_id, proje_id, baslik, alan, zorluk_modu, tamamlanan, toplam, secim_tarihi }], en yenisi önce.
+// Öğrenci tekrar girince devam eden projesinin haritasına buradan döner.
+export function secimleriGetir() {
+  return istek('/secimler', { jetonlu: true });
+}
+
 // PUT /harita/{secimId} { sira, tamamlandi } → güncel harita
 export function adimIsaretle(secimId, { sira, tamamlandi }) {
   return istek(`/harita/${secimId}`, { yontem: 'PUT', govde: { sira, tamamlandi }, jetonlu: true });

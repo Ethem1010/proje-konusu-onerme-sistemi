@@ -21,6 +21,7 @@ import {
   profilOnayla,
   projeGetir,
   secimYap,
+  secimleriGetir,
   surprizGetir,
 } from './api.js';
 
@@ -218,6 +219,18 @@ describe('api', () => {
     expect(fetchSahte.mock.calls[1][0]).toBe(`${SUNUCU_ADRESI}/harita/3`);
     expect(fetchSahte.mock.calls[1][1].method).toBe('PUT');
     expect(JSON.parse(fetchSahte.mock.calls[1][1].body)).toEqual({ sira: 4, tamamlandi: true });
+  });
+
+  it('öğrencinin seçtiği projeler jetonla GET /secimler ile istenir', async () => {
+    jetonuKaydet({ erisim_jetonu: 'abc', ad: 'Ayşe' });
+    const fetchSahte = vi.fn(() => sahteCevap(200, []));
+    vi.stubGlobal('fetch', fetchSahte);
+
+    await secimleriGetir();
+    const [adres, ayar] = fetchSahte.mock.calls[0];
+    expect(adres).toBe(`${SUNUCU_ADRESI}/secimler`);
+    expect(ayar.method).toBe('GET');
+    expect(ayar.headers.Authorization).toBe('Bearer abc');
   });
 
   it('sürpriz proje ve tek proje GET ile istenir', async () => {

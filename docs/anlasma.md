@@ -48,6 +48,7 @@ Durum: ✅ çalışıyor, ⏳ yazılacak (hangi hafta).
 | `POST /duello` | ✓ | ✅ | Düello seçimini kaydeder |
 | `GET /duello/{profil_id}` | ✓ | ✅ | Kayıtlı düello maçlarını verir (sayfa yenilenince) |
 | `POST /secim` | ✓ | ✅ | Seçilen projeyi kaydeder, 12 adımlık haritayı oluşturur |
+| `GET /secimler` | ✓ | ✅ | Öğrencinin seçtiği projeler ve haritadaki ilerleme (tekrar girince haritasına dönsün diye) |
 | `GET /harita/{secim_id}` | ✓ | ✅ | Görev haritasını verir |
 | `PUT /harita/{secim_id}` | ✓ | ✅ | Bir adımı tamamlandı/tamamlanmadı yapar |
 | `GET /surpriz/{profil_id}` | ✓ | ✅ | Sürpriz proje verir |
@@ -152,6 +153,12 @@ profil başkasınınsa 404. Düellonun ortasında sayfa yenilenirse arayüz kald
 - Haritayı Gemini üretir. Gemini cevap vermezse ya da günlük hak dolduysa hata verilmez, projenin kendi adımlarından
   12 adımlık yedek harita çıkar. Günlük hak sadece Gemini gerçekten cevap verdiyse 1 azalır.
 - Aynı proje ikinci kez seçilirse yeni kayıt açılmaz, var olan harita döner (`secilme_sayisi` tekrar artmaz).
+
+**`GET /secimler`**: öğrencinin seçtiği projeler, en yenisi önce. "Seni tanıyalım" ekranında "Devam eden projelerin" kutusu bunu gösterir.
+```json
+[{ "secim_id": 3, "proje_id": 42, "baslik": "Kampüs Oyunu", "alan": "oyun", "zorluk_modu": "efsane",
+   "tamamlanan": 3, "toplam": 12, "secim_tarihi": "2026-10-27T18:58:38Z" }]
+```
 
 **`GET /harita/{secim_id}`**: cevap `POST /secim` ile aynı kalıp, adımlar `sira`'ya göre. Seçim başkasınınsa 404.
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ANAHTARLAR, akisSil, akisYaz } from '../akis.js';
-import { bolumleriGetir, oturumDustu, profilOlustur } from '../api.js';
+import { bolumleriGetir, oturumDustu, profilOlustur, secimleriGetir } from '../api.js';
 import Dugme from '../bilesenler/Dugme.jsx';
 import UstCubuk from '../bilesenler/UstCubuk.jsx';
 import { anlatHatasi, bolumleriGrupla } from '../dogrulama.js';
+import { ZORLUK_MODLARI } from '../secenekler.js';
 
 // Seçenekler demodakiyle aynı. Ekranda ad görünür, sunucuya kod gider (docs/anlasma.md).
 export const PROJE_TURLERI = [
@@ -59,6 +60,26 @@ export default function Anlat() {
   const [metin, setMetin] = useState(taslak.metin ?? '');
   const [hata, setHata] = useState('');
   const [bekliyor, setBekliyor] = useState(false);
+  const [devamEdenler, setDevamEdenler] = useState([]);
+
+  // Yazılanlar her değişiklikte saklanır: "Devam et"e basmadan sayfa yenilense de kaybolmaz.
+  useEffect(() => {
+    sessionStorage.setItem(
+      TASLAK_ANAHTARI,
+      JSON.stringify({ ...taslakOku(), bolum, bolumAdi, tur, sure, saat, ekip, tercih, metin }),
+    );
+  }, [bolum, bolumAdi, tur, sure, saat, ekip, tercih, metin]);
+
+  // Daha önce proje seçtiyse haritasına dönebilsin. Liste alınamazsa sessizce gösterilmez.
+  useEffect(() => {
+    let iptal = false;
+    Promise.resolve(secimleriGetir())
+      .then((liste) => !iptal && Array.isArray(liste) && setDevamEdenler(liste))
+      .catch(() => {});
+    return () => {
+      iptal = true;
+    };
+  }, []);
 
   useEffect(() => {
     let iptal = false;
@@ -137,6 +158,31 @@ export default function Anlat() {
             <h1>Seni tanıyalım</h1>
             <p className="muted">Bölümünü ve projeni seç, sonra kendini kendi cümlelerinle anlat.</p>
           </div>
+
+          {devamEdenler.length > 0 && (
+            <section className="panel" aria-labelledby="devam-baslik">
+              <div className="panel-baslik">
+                <h2 id="devam-baslik">Devam eden projelerin</h2>
+                <p className="muted small">Görev haritana kaldığın yerden devam et ya da aşağıdan yeni bir arayışa başla.</p>
+              </div>
+              <ul className="devam-liste">
+                {devamEdenler.slice(0, 3).map((s) => (
+                  <li key={s.secim_id}>
+                    <span className="devam-bilgi">
+                      <strong>{s.baslik}</strong>
+                      <span className="muted small">
+                        {ZORLUK_MODLARI.find((m) => m.kod === s.zorluk_modu)?.ad ?? s.zorluk_modu} mod · {s.tamamlanan}/
+                        {s.toplam} tamamlandı
+                      </span>
+                    </span>
+                    <Dugme tur="ghost" kucuk onClick={() => git(`/harita/${s.secim_id}`)}>
+                      Haritaya git
+                    </Dugme>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <div className="panel">
             <div className="alanlar">
