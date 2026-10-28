@@ -209,6 +209,15 @@ def oner(profil, havuz=None, gemini_kullan=True, rastgele=None):
     yapilabilir = [p for p in adaylar if p["puan_yapilabilirlik"] >= YAPILAMAZ]
     if len(yapilabilir) >= GOSTERILECEK:
         adaylar = yapilabilir  # süresine hiç sığmayan projeler gösterilmez
+    else:
+        # Yeterince sığan proje yoksa (ör. 1 haftası olan öğrenci) eksik kalan yer, süresine en yakın
+        # projelerle doldurulur. Eskiden puana göre doldurulduğu için 1 haftalık öğrenciye 16 haftalık proje çıkabiliyordu.
+        sigmayan = sorted(
+            (p for p in adaylar if p["puan_yapilabilirlik"] < YAPILAMAZ),
+            key=lambda p: (p["puan_yapilabilirlik"], p["puan_toplam"]),
+            reverse=True,
+        )
+        adaylar = yapilabilir + sigmayan[: GOSTERILECEK - len(yapilabilir)]
 
     gemini_projeleri = []
     if gemini_kullan:

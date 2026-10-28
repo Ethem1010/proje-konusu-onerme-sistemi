@@ -68,6 +68,13 @@ _SONRAKI_NOTR = re.compile(r"^(?:gerek|lazim)")
 _ONCEKI_NOTR = {"kaldim": "arasinda", "etmez": "fark"}
 #   "görüntü işleme biliyorum demem" -> bilgi hakkında
 _BILGI = re.compile(r"^(?:biliyo|bilir|bilgi)")
+# "yok" tek başına istememek demek değil ("docker yok" = bilmiyor). Önündeki kelime ilgiyi anlatıyorsa istememektir:
+#   "donanımla aram yok", "yapay zekaya ilgim yok", "oyuna hiç hevesim yok"
+_ILGI_YOK = re.compile(r"^(?:aram|arasi|ilgim|hevesim|merakim|istegim|sevgim)$")
+
+
+def _ilgi_yok_mu(kelimeler, i):
+    return kelimeler[i] == "yok" and i > 0 and bool(_ILGI_YOK.match(kelimeler[i - 1]))
 
 
 def _notr_mu(kelimeler, i):
@@ -84,17 +91,20 @@ def acikca_istemedikleri(metin):
 
     Model "istemiyorum" örneğini az gördüğü için "web işlerinden hiç hoşlanmam" gibi açık bir cümlede bile
     emin olamayabiliyor; bu kural modelin üstüne eklenir. Alanın adı olumsuz kelimenin hemen önünde
-    (en fazla GERI_BAKIS kelime) geçmeli ve araya olumlu bir fiil girmemeli. "Python bilmiyorum",
+    (en fazla GERI_BAKIS kelime) geçmeli ve araya olumlu bir fiil girmemeli. "Donanımla aram yok",
+    "yapay zekaya ilgim yok" gibi kalıplar da istememek sayılır (_ilgi_yok_mu). "Python bilmiyorum",
     "fark etmez", "öğrenmem lazım" gibi istememek anlatmayan kalıplar sayılmaz (_notr_mu).
     """
     sonuc = []
     for parca in _PARCA_SINIRI.split(sade(metin)):
         kelimeler = (parca or "").split()
         for i, kelime in enumerate(kelimeler):
-            if not _OLUMSUZLUK.search(kelime) or _notr_mu(kelimeler, i):
+            ilgi_yok = _ilgi_yok_mu(kelimeler, i)
+            if not ilgi_yok and (not _OLUMSUZLUK.search(kelime) or _notr_mu(kelimeler, i)):
                 continue
+            son = i - 1 if ilgi_yok else i  # "aram yok": "aram" kelimesi pencereye girmesin
             pencere = []
-            for onceki in reversed(kelimeler[max(0, i - GERI_BAKIS):i]):
+            for onceki in reversed(kelimeler[max(0, son - GERI_BAKIS):son]):
                 if _OLUMLU_FIIL.match(onceki):
                     break
                 pencere.insert(0, onceki)
