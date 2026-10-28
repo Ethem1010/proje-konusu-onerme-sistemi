@@ -2,8 +2,16 @@
 import { akisiTemizle } from './akis.js';
 
 // Seyithan'ın sunucusu: `uvicorn sunucu.main:app --reload` ile bu adreste açılır.
+// Site telefondan açılınca (ör. http://192.168.43.20:5173) sunucu da aynı bilgisayardadır;
+// bu yüzden sunucu adresi sayfanın adresinden çıkarılır: http://192.168.43.20:8000.
 // Başka bir adres gerekirse `.env` dosyasında VITE_SUNUCU_ADRESI ile değiştirilir.
-export const SUNUCU_ADRESI = import.meta.env.VITE_SUNUCU_ADRESI || 'http://127.0.0.1:8000';
+export function varsayilanSunucu(konum = globalThis.location) {
+  const ad = konum?.hostname;
+  if (!ad || ad === 'localhost' || ad === '127.0.0.1') return 'http://127.0.0.1:8000';
+  return `http://${ad}:8000`;
+}
+
+export const SUNUCU_ADRESI = import.meta.env.VITE_SUNUCU_ADRESI || varsayilanSunucu();
 
 const JETON_ANAHTARI = 'konu_kartlari_jeton';
 const AD_ANAHTARI = 'konu_kartlari_ad';

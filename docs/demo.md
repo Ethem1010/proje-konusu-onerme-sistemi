@@ -32,6 +32,7 @@ bir gün önce provayı ve demo gününü adım adım anlatır. Her maddeyi yapt
 ## 3. Prova (demodan bir gün önce, yaklaşık 15 dakika)
 
 İki terminal: `uvicorn sunucu.main:app --reload` ve `cd arayuz; npm run dev`. Tarayıcıda http://localhost:5173
+(Telefondan gösterilecekse provayı da 5. bölümdeki komutlarla ve telefondan yap.)
 
 - [ ] Yeni hesap aç (ör. `demo1@ornek.com`). Demo günü için ayrıca `demo2@ornek.com` açılabilir.
 - [ ] Bölüm, "Dönem projesi", 12 hafta seç. Kendini anlatan metni yaz; içinde bir istemediğin alan
@@ -50,27 +51,39 @@ bir gün önce provayı ve demo gününü adım adım anlatır. Her maddeyi yapt
       görev haritası yedek haritayla oluşuyor, sistem hata vermiyor.
 - [ ] Hoca sorarsa: "Gemini cevap vermezse sistem havuz ve yedek haritayla devam ediyor, öğrenci hata görmüyor."
 
-## 5. Telefondan göstermek (isteğe bağlı)
+## 5. Telefondan göstermek
 
-Okul Wi-Fi'ı aynı ağdaki cihazların birbirini görmesini çoğu zaman engeller. En garantisi
-laptopu **telefonun hotspot'una** bağlamak. Bunu mutlaka demodan önce dene.
+Site telefonun tarayıcısında açılır; sunucu ve veritabanı yine laptopta çalışır.
+Okul Wi-Fi'ı aynı ağdaki cihazların birbirini görmesini çoğu zaman engeller. Bu yüzden
+laptopu **telefonun hotspot'una** bağla: telefon ve laptop aynı küçük ağda olur.
 
-1. Laptopu telefonun hotspot'una bağla. PowerShell'de `ipconfig` yaz, "IPv4 Address" satırındaki adresi not al
-   (ör. `192.168.43.20`; aşağıda bu adresi kendi adresinle değiştir).
-2. Ana klasördeki `.env`'e ekle: `CORS_EK_ADRESLER=http://192.168.43.20:5173`
-3. `arayuz` klasöründe `.env.local` adında bir dosya oluştur, içine: `VITE_SUNUCU_ADRESI=http://192.168.43.20:8000`
-4. Sunucuyu şöyle başlat: `uvicorn sunucu.main:app --host 0.0.0.0 --port 8000`
-5. Arayüzü şöyle başlat: `cd arayuz; npm run dev -- --host`
-6. Windows Güvenlik Duvarı izin sorarsa "Özel ağlar" için izin ver.
-7. Telefonun tarayıcısında `http://192.168.43.20:5173` adresini aç.
+**Bir kere yapılacaklar**
 
-Demodan sonra `arayuz/.env.local` dosyasını sil ve `.env`'deki `CORS_EK_ADRESLER` satırını kaldır.
-Hotspot değişince adres de değişir, adımları yeni adresle tekrarla.
+1. Ana klasördeki `.env` dosyasına şu satırı ekle: `TELEFON_DEMO=1`
+   (Bu satır olmadan sunucu sadece laptoptan gelen isteklere cevap verir.)
+2. Laptopu telefonun hotspot'una bağla. Windows'ta **Ayarlar → Ağ ve İnternet → Wi-Fi →**
+   bağlı olduğun ağın adı → **Ağ profili türü: Özel** seç. ("Ortak" kalırsa güvenlik duvarı telefonu engeller.)
+
+**Her açılışta**
+
+1. Sunucuyu şöyle başlat (ana klasörde): `uvicorn sunucu.main:app --host 0.0.0.0 --port 8000`
+2. Arayüzü şöyle başlat: `cd arayuz; npm run dev:telefon`
+3. Windows Güvenlik Duvarı "Python" ve "Node.js" için izin sorarsa **Özel ağlar** kutusu işaretliyken **İzin ver**.
+4. Vite'ın terminalinde `Network: http://192.168.x.x:5173/` gibi bir satır çıkar. Telefonun tarayıcısına **o adresi** yaz.
+5. Laptopta da her zamanki gibi http://localhost:5173 açılır; ikisi aynı anda çalışır.
+
+Sunucu adresini elle yazmaya gerek yok: site telefondan açılınca sunucunun laptopta olduğunu kendisi bulur.
+Hotspot kapanıp açılırsa adres değişebilir; 4. adımdaki satıra yeniden bak.
+
+**Telefonda açılmazsa:** (1) Telefon ve laptop aynı hotspot'ta mı? (2) Ağ profili "Özel" mi?
+(3) `.env`'de `TELEFON_DEMO=1` var mı, sunucu bundan sonra yeniden başlatıldı mı?
+(4) Sunucu `--host 0.0.0.0` ile mi başlatıldı? Çözülmezse demoyu laptoptan göster, sistem aynı.
 
 ## 6. Demo günü
 
 - [ ] Laptop şarjlı, şarj aleti ve görüntü adaptörü (HDMI) yanında.
-- [ ] Demodan 15 dakika önce iki terminali aç, siteyi giriş ekranına kadar aç (Gemini isteği harcama).
+- [ ] Telefonun şarjı dolu, hotspot açık, laptop hotspot'a bağlı.
+- [ ] Demodan 15 dakika önce iki terminali (5. bölümdeki komutlarla) aç, siteyi giriş ekranına kadar aç (Gemini isteği harcama).
 - [ ] Provada kaydettiğin metin ve demo hesabının şifresi elinin altında.
 - [ ] Ekranda `.env` dosyası açık değil.
 - [ ] Yedek ekran görüntüleri masaüstünde.
@@ -78,4 +91,4 @@ Hotspot değişince adres de değişir, adımları yeni adresle tekrarla.
 ## 7. Demodan sonra
 
 - [ ] `.env`'de kendi Gemini anahtarına ve `konu_kartlari` veritabanına geri dön.
-- [ ] `GEMINI_ZAMAN_ASIMI` ve `CORS_EK_ADRESLER` satırlarını kaldır, `arayuz/.env.local` varsa sil.
+- [ ] `GEMINI_ZAMAN_ASIMI` ve `TELEFON_DEMO` satırlarını kaldır.

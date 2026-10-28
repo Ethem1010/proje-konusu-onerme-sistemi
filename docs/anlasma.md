@@ -8,7 +8,7 @@ Bu dosyayı değiştirmeden önce gruba haber verin; biri değiştirirse diğer 
 | Konu | Karar |
 |---|---|
 | Sunucu adresi | `http://127.0.0.1:8000` (çalıştırma: ana klasörden `uvicorn sunucu.main:app --reload`) |
-| Arayüz adresi | `http://localhost:5173` (CORS buna izin veriyor; telefondan demo için `.env`'de `CORS_EK_ADRESLER`) |
+| Arayüz adresi | `http://localhost:5173` (CORS buna izin veriyor; telefondan demo için `.env`'de `TELEFON_DEMO=1`) |
 | Veri biçimi | İstek ve cevaplar JSON |
 | Giriş gerektiren adresler | Başlıkta `Authorization: Bearer <erisim_jetonu>` |
 | Hata cevabı | `{"detail": "Kullanıcıya gösterilebilecek Türkçe cümle"}` |

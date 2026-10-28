@@ -97,6 +97,8 @@ npm run dev
 
 Tarayıcıda **http://localhost:5173** adresini aç. Sunucunun bütün adresleri http://127.0.0.1:8000/docs adresinde denenebilir.
 
+Siteyi telefondan açmak için (aynı ağda): [docs/demo.md, 5. bölüm](docs/demo.md#5-telefondan-göstermek).
+
 ## Testler
 
 ```powershell
