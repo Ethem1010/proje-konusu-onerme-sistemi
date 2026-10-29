@@ -110,6 +110,8 @@ def proje_sec(
     Aynı proje ikinci kez seçilirse yeni kayıt açılmaz, var olan harita döner.
     """
     proje = kullanicinin_projesi(istek.proje_id, kullanici_id, oturum)
+    # Aynı proje aynı anda iki kez seçilirse ikincisi beklesin ve var olan haritayı alsın
+    oturum.refresh(proje, with_for_update=True)
 
     var_olan = oturum.scalar(
         select(SecilenProje).where(

@@ -55,7 +55,9 @@ def duello_kaydet(
     oturum: Session = Depends(oturum_al),
 ):
     """Bir düello eşleşmesinin sonucunu kaydeder."""
-    kullanicinin_profili(istek.profil_id, kullanici_id, oturum)  # başkasınınsa 404
+    profil = kullanicinin_profili(istek.profil_id, kullanici_id, oturum)  # başkasınınsa 404
+    # Aynı maç aynı anda iki kez gelirse ikincisi birincinin kaydını görsün (çift kayıt olmasın)
+    oturum.refresh(profil, with_for_update=True)
 
     if istek.tur not in TUR_ESLESME_SAYISI:
         _hata("tur 'ceyrek', 'yari' ya da 'final' olmalı.")

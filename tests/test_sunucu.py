@@ -23,6 +23,7 @@ Kurulum (bir kere):
 import os
 import unittest
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
@@ -65,7 +66,7 @@ os.environ.setdefault("JWT_GIZLI_ANAHTAR", "sadece-test-icin-anahtar-" + uuid.uu
 import jwt  # noqa: E402
 import psycopg  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine, select  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 from oneri_motoru import uretim  # noqa: E402
@@ -601,6 +602,42 @@ class HaritaTestleri(SunucuTesti):
         baslik, _, proje_id, _ = self.sampiyon()
         cevap = self.istemci.post("/secim", headers=baslik, json={"proje_id": proje_id, "zorluk_modu": "imkansiz"})
         self.assertEqual(cevap.status_code, 422)
+
+
+# --- 7. Aynı anda gelen istekler (çift tıklama, iki sekme, telefon + laptop) --------
+
+class EsZamanliIstekTestleri(SunucuTesti):
+    def ayni_anda(self, adet, istek):
+        """istek(istemci) fonksiyonunu adet kez aynı anda çalıştırır, cevapları döner."""
+        istemciler = [TestClient(app) for _ in range(adet)]
+        with ThreadPoolExecutor(adet) as havuz:
+            return list(havuz.map(istek, istemciler))
+
+    def test_oneri_iki_kez_ayni_anda_10_proje_kalir(self):
+        baslik, _ = self.ogrenci()
+        profil_id = self.profil(baslik)["id"]
+        cevaplar = self.ayni_anda(3, lambda i: i.post(f"/oneriler/{profil_id}", headers=baslik))
+        self.assertTrue(all(c.status_code == 200 for c in cevaplar), [c.status_code for c in cevaplar])
+        kayitli = self.istemci.get(f"/oneriler/{profil_id}", headers=baslik).json()
+        self.assertEqual(len(kayitli), 10)
+        self.assertEqual(sum(p["duelloda"] for p in kayitli), 8)
+
+    def test_ayni_mac_iki_kez_ayni_anda_tek_kayit(self):
+        baslik, _ = self.ogrenci()
+        profil_id = self.profil(baslik)["id"]
+        d = [p["id"] for p in self.oneriler(baslik, profil_id) if p["duelloda"]]
+        istek = {"profil_id": profil_id, "kazanan_proje_id": d[0], "kaybeden_proje_id": d[1], "tur": "ceyrek"}
+        cevaplar = self.ayni_anda(3, lambda i: i.post("/duello", headers=baslik, json=istek))
+        self.assertEqual(sorted(c.status_code for c in cevaplar), [201, 400, 400])
+        self.assertEqual(len(self.istemci.get(f"/duello/{profil_id}", headers=baslik).json()), 1)
+
+    def test_ayni_proje_iki_kez_ayni_anda_tek_harita(self):
+        baslik, _ = self.ogrenci()
+        profil_id = self.profil(baslik)["id"]
+        sampiyon = self.duelloyu_bitir(baslik, profil_id, self.oneriler(baslik, profil_id))
+        cevaplar = self.ayni_anda(3, lambda i: i.post("/secim", headers=baslik, json={"proje_id": sampiyon}))
+        self.assertTrue(all(c.status_code == 201 for c in cevaplar), [c.status_code for c in cevaplar])
+        self.assertEqual(len({c.json()["secim_id"] for c in cevaplar}), 1)
 
 
 if __name__ == "__main__":
