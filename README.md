@@ -42,7 +42,7 @@ React 19 + Vite · FastAPI (Python) · PostgreSQL · scikit-learn · Google Gemi
 
 ## Kurulum (Windows)
 
-Gerekenler: Python 3.11 ya da üstü, Node.js 20 ya da üstü, PostgreSQL 16, Git.
+Gerekenler: Python 3.11 ya da üstü, Node.js 22 (LTS), PostgreSQL 16, Git.
 Komutlar PowerShell'de, aksi yazmıyorsa **projenin ana klasöründe** çalıştırılır.
 
 **1. Projeyi indir ve Python paketlerini kur**
@@ -64,6 +64,9 @@ psql -U postgres -d konu_kartlari -f veritabani/bolumler.sql
 ```
 
 `tablolar.sql` tabloları silip yeniden kurar; içinde veri olan veritabanında çalıştırma.
+
+`psql` komutu bulunamadı derse PostgreSQL'in `bin` klasörünü (ör. `C:\Program Files\PostgreSQL\16\bin`)
+Windows'ta Path'e ekle ya da aynı SQL dosyalarını pgAdmin'de **Query Tool** ile çalıştır.
 
 **3. Ayarlar:** `.env.example` dosyasını kopyalayıp adını `.env` yap ve içini doldur.
 
