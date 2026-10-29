@@ -192,6 +192,8 @@ select.alan-sec { flex: 1 1 220px; min-width: 0; width: auto; max-width: 360px; 
 .kv { display: flex; flex-direction: column; gap: 6px; }
 .adimlar { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
 .adimlar li::marker { color: var(--accent); font-weight: 700; }
+/* Havuzdaki adımlar küçük harfle yazılmış ("arayüzü tasarla"); ekranda büyük harfle başlasın. lang="tr" sayesinde i → İ olur. */
+.adimlar li::first-letter { text-transform: uppercase; }
 .iki { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .meter { display: grid; grid-template-columns: 120px 1fr 36px; gap: 10px; align-items: center; font-size: 14px; }
 .meter .track { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
