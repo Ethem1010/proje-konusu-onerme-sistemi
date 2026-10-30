@@ -113,6 +113,9 @@ def oneri_uret(
     ama düello başladıysa ya da proje seçildiyse liste korunur (409).
     """
     profil = kullanicinin_profili(profil_id, kullanici_id, oturum)
+    # Aynı profil için aynı anda iki istek gelirse (çift tıklama, iki sekme) sırayla çalışsınlar;
+    # yoksa ikisi de eski listeyi silip kendi 10 projesini ekler ve 20 proje olur.
+    oturum.refresh(profil, with_for_update=True)
     if not profil.onaylandi:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Önce profilini onaylaman gerekiyor.")
 
