@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { akisOku, akisYaz } from './akis.js';
 import {
   SUNUCU_ADRESI,
+  varsayilanSunucu,
   ben,
   bolumleriGetir,
   cikisYap,
@@ -243,5 +244,17 @@ describe('api', () => {
       [`${SUNUCU_ADRESI}/surpriz/5`, 'GET'],
       [`${SUNUCU_ADRESI}/projeler/60`, 'GET'],
     ]);
+  });
+});
+
+describe('sunucu adresi', () => {
+  it('bilgisayarda açılınca 127.0.0.1:8000', () => {
+    expect(varsayilanSunucu({ hostname: 'localhost' })).toBe('http://127.0.0.1:8000');
+    expect(varsayilanSunucu({ hostname: '127.0.0.1' })).toBe('http://127.0.0.1:8000');
+    expect(varsayilanSunucu(undefined)).toBe('http://127.0.0.1:8000');
+  });
+
+  it('telefondan açılınca aynı bilgisayarın 8000 portu', () => {
+    expect(varsayilanSunucu({ hostname: '192.168.43.20' })).toBe('http://192.168.43.20:8000');
   });
 });
