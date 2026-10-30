@@ -265,3 +265,11 @@ select.alan-sec { flex: 1 1 220px; min-width: 0; width: auto; max-width: 360px; 
   .ilerleme i { animation: none; left: 0; width: 100%; opacity: .5; }
   .dot, .dcard { transition: none; }
 }
+
+/* Öneriler: "Düelloyu başlat" kaydırırken ekranın altında sabit kalır */
+.alt-sabit { position: sticky; bottom: 0; z-index: 4; background: var(--bg); padding: 12px 0; border-top: 1px solid var(--line); }
+
+/* Seni tanıyalım: devam eden projeler */
+.devam-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.devam-liste li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.devam-bilgi { display: flex; flex-direction: column; gap: 2px; min-width: 0; }

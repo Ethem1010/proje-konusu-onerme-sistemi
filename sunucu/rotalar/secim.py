@@ -1,4 +1,4 @@
-"""Seçim ve görev haritası: POST /secim, GET /harita/{secim_id}, PUT /harita/{secim_id}.
+"""Seçim ve görev haritası: POST /secim, GET /secimler, GET /harita/{secim_id}, PUT /harita/{secim_id}.
 
 POST /secim sırası:
 1. Proje bu öğrencinin mi? (değilse 404)
@@ -15,12 +15,12 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from oneri_motoru import uretim
 from veritabani.baglanti import oturum_al
-from veritabani.modeller import GorevAdimi, HavuzProjesi, SecilenProje
+from veritabani.modeller import GorevAdimi, HavuzProjesi, Proje, SecilenProje
 
 from .. import yz_hakki
 from ..guvenlik import aktif_kullanici_id
@@ -56,6 +56,17 @@ class HaritaCevabi(BaseModel):
     proje_id: int
     zorluk_modu: str
     adimlar: list[Adim]
+
+
+class SecimOzeti(BaseModel):
+    secim_id: int
+    proje_id: int
+    baslik: str
+    alan: str
+    zorluk_modu: str
+    tamamlanan: int
+    toplam: int
+    secim_tarihi: datetime
 
 
 def _cevap(secim: SecilenProje, oturum: Session) -> HaritaCevabi:
@@ -155,6 +166,36 @@ def proje_sec(
 
     oturum.commit()
     return _cevap(secim, oturum)
+
+
+@router.get("/secimler", response_model=list[SecimOzeti])
+def secimleri_getir(
+    kullanici_id: int = Depends(aktif_kullanici_id),
+    oturum: Session = Depends(oturum_al),
+):
+    """Öğrencinin seçtiği projeler, en yenisi önce. Öğrenci tekrar girince haritasına buradan döner."""
+    tamamlanan = func.count(GorevAdimi.id).filter(GorevAdimi.tamamlandi.is_(True))
+    satirlar = oturum.execute(
+        select(SecilenProje, Proje.baslik, Proje.alan, tamamlanan, func.count(GorevAdimi.id))
+        .join(Proje, Proje.id == SecilenProje.proje_id)
+        .outerjoin(GorevAdimi, GorevAdimi.secim_id == SecilenProje.id)
+        .where(SecilenProje.kullanici_id == kullanici_id)
+        .group_by(SecilenProje.id, Proje.baslik, Proje.alan)
+        .order_by(SecilenProje.secim_tarihi.desc(), SecilenProje.id.desc())
+    ).all()
+    return [
+        SecimOzeti(
+            secim_id=secim.id,
+            proje_id=secim.proje_id,
+            baslik=baslik,
+            alan=alan,
+            zorluk_modu=secim.zorluk_modu,
+            tamamlanan=biten,
+            toplam=hepsi,
+            secim_tarihi=secim.secim_tarihi,
+        )
+        for secim, baslik, alan, biten, hepsi in satirlar
+    ]
 
 
 @router.get("/harita/{secim_id}", response_model=HaritaCevabi)

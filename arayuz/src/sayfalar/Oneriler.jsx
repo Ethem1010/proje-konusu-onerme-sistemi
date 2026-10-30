@@ -158,7 +158,8 @@ export default function Oneriler() {
               />
             ))}
           </ol>
-          <div className="row">
+          {/* Liste uzun; düğme ekranın altında sabit durur, kaydırırken de görünür. */}
+          <div className="row alt-sabit">
             <Dugme onClick={() => git(`/duello/${profilId}`)}>Düelloyu başlat</Dugme>
             {!surpriz && (
               <Dugme tur="ghost" onClick={surprizGoster} disabled={surprizBekliyor}>
